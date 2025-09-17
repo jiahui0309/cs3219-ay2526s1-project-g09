@@ -35,6 +35,7 @@ jobs:
           region: ap-southeast-1
           version_label: Version-${{ github.sha }}
           deployment_package: peerprep-app.zip
+          use_existing_version_if_available: true
 
       - name: Verify deployment 
         run: |
