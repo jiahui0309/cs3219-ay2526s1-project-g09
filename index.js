@@ -9,11 +9,11 @@ app.get("/", (req, res) => {
 
 // Health check endpoint to verify env var
 app.get("/health", (req, res) => {
-  if (process.env.MONGODB_URI) {
-    res.send("MongoDB URI: Loaded " + process.env.MONGODB_URI);
-  } else {
-    res.status(500).send("MongoDB URI: Missing");
-  }
+//   if (process.env.MONGODB_URI) {
+//     res.send("MongoDB URI: Loaded " + process.env.MONGODB_URI);
+//   } else {
+//     res.status(500).send("MongoDB URI: Missing");
+//   }
   if (process.env.MONGO_URI) {
     res.send("Mongo URI: Loaded " + process.env.MONGO_URI);
   } else {
