@@ -32,7 +32,6 @@ jobs:
           application_name: PeerPrep-09
           environment_name: PeerPrep-09-env
           region: ap-southeast-1
-          version_label: ${{ env.VERSION }}
           deployment_package: peerprep-app.zip
 
       - name: Verify deployment 
