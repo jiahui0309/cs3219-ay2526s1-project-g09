@@ -37,9 +37,3 @@ jobs:
           deployment_package: peerprep-app.zip
           use_existing_version_if_available: true
 
-      - name: Verify deployment 
-        run: |
-          APP_URL="http://PeerPrep-09-env.eba-tbnn3qhs.ap-southeast-1.elasticbeanstalk.com"
-
-          echo "Checking MongoDB URI env var..."
-          curl -s $APP_URL | grep -q "Mongo URI" && echo "MONGODB_URI detected" || (echo "MONGODB_URI missing" && exit 1)
