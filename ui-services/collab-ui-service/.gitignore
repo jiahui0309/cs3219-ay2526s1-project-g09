@@ -7,33 +7,18 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Dependency directories
-node_modules/
-bower_components/
-
-# Build output
-dist/
-dist-ssr/
+node_modules
+dist
+dist-ssr
 *.local
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea/
+.idea
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-
-# React / Frontend specific
-.DS_*
-**/*.backup.*
-**/*.back.*
-*.sublime*
-
-# Design files
-*.psd
-*.thumb
-*.sketch
