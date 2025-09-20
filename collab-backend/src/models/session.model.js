@@ -11,4 +11,4 @@ const SessionSchema = new mongoose.Schema({
   lastSavedAttempt: { type: JSON },
 });
 
-export default mongoose.model("Session", SessionSchema);
+export default mongoose.model("Session", SessionSchema, "sessions");

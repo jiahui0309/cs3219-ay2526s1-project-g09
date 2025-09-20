@@ -1,33 +1,36 @@
 import { Server } from "socket.io";
 
 export const initSocket = (server) => {
-  const io = new Server(server, {
-    cors: { origin: "*" }, // adjust to FE domain
-  });
-
-  io.on("connection", (socket) => {
-    console.log("🔗 User connected:", socket.id);
-
-    // join session room
-    socket.on("joinSession", ({ sessionId, userId }) => {
-      socket.join(sessionId);
-      io.to(sessionId).emit("userJoined", { userId });
+    const io = new Server(server, {
+        cors: {
+            origin: "http://localhost:5173", 
+            methods: ["GET", "POST"]
+        }
     });
 
-    // user sends message
-    socket.on("message", ({ sessionId, userId, text }) => {
-      io.to(sessionId).emit("newMessage", { userId, text });
-    });
+    io.on("connection", (socket) => {
+        socket.on("connect", () => {
+            console.log("connected", socket.id);
+        });
 
-    // heartbeat
-    socket.on("heartbeat", ({ sessionId, userId }) => {
-      console.log(`❤️ heartbeat from ${userId} in session ${sessionId}`);
-    });
+        socket.on("sessionCreated", (s) => {
+            console.log("got sessionCreated:", s);
+        });
 
-    socket.on("disconnect", () => {
-      console.log("❌ User disconnected:", socket.id);
+        // sessionId passed from frontend
+        socket.on("joinRoom", (sessionId) => {
+            socket.join(sessionId);
+            console.log(`User ${socket.id} joined room ${sessionId}`);
+        });
+
+        socket.on("codeUpdate", ({ sessionId, newCode }) => {
+            socket.to(sessionId).emit("codeUpdate", newCode);
+        });
+
+        socket.on("disconnect", () => {
+            console.log("A user disconnected:", socket.id);
+        });
     });
-  });
 
   return io;
 };

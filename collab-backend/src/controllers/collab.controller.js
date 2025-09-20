@@ -5,6 +5,14 @@ export const startSession = async (req, res) => {
     const { questionId, users } = req.body;
     const sessionId = `sess-${Date.now()}`; // temporary simple unique ID generation
     const session = await SessionService.createSession({ questionId, users, sessionId });
+
+    // emit to socket clients that a session was created
+    const io = req.app?.locals?.io;
+    if (io) {
+      io.emit('sessionCreated', session); 
+      console.log("Emitted sessionCreated event for session:", sessionId);
+    }
+
     res.json({ success: true, session });
   } catch (error) {
     res.status(500).json({ error: error.message });

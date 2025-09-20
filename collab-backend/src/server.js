@@ -1,13 +1,25 @@
 import http from "http";
 import app from "./app.js";
 import { initSocket } from "./sockets/collab.socket.js";
+import { connectDB } from "./config/db.js";
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 5276;
 
 const server = http.createServer(app);
 
-initSocket(server);
+async function start() {
+    await connectDB().then(() => {
+        console.log("MongoDB Connected!");
 
-server.listen(PORT, () => {
-  console.log(`Collab Service running on port ${PORT}`);
-});
+        const io = initSocket(server);
+        app.locals.io = io; 
+        
+        server.listen(PORT);
+        console.log("User service server listening on http://localhost:" + PORT);
+    }).catch((err) => {
+        console.error("Failed to connect to DB");
+        console.error(err);
+    });
+}
+
+start();
