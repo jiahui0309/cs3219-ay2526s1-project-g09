@@ -1,11 +1,9 @@
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
+import mongoose from "mongoose";
+import dotenv from "dotenv";
 dotenv.config();
-import { connect } from 'mongoose';
-
+import { connect } from "mongoose";
 
 const DB_NAME = process.env.MONGO_DB_NAME || "collaborative-service";
-
 
 export async function connectDB() {
   let mongoDBUri = process.env.MONGO_URI;
