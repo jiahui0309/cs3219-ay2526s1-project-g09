@@ -5,7 +5,6 @@ import "tldraw/tldraw.css";
 import CollabEditor from "./collab/CollabEditor";
 
 const WorkingWindow: React.FC = () => {
-
   return (
     <div className="flex flex-1 bg-gray-800 rounded-lg shadow-md overflow-hidden relative">
       <Tabs defaultValue="code" className="flex flex-col flex-1">
@@ -24,7 +23,7 @@ const WorkingWindow: React.FC = () => {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="code" className="flex-1 p-4 overflow-hidden">
-          <CollabEditor questionId="q1" users={["u1", "u2"]}/>
+          <CollabEditor questionId="q1" users={["u1", "u2"]} />
         </TabsContent>
         <TabsContent value="whiteboard" className="flex-1 p-4 overflow-hidden">
           <Tldraw />

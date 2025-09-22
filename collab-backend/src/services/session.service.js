@@ -6,7 +6,11 @@ class SessionService {
   }
 
   static async endSession(sessionId) {
-    const session = await Session.findOne({ sessionId });
+    if (typeof sessionId !== "string" || !/^[a-zA-Z0-9-_]+$/.test(sessionId)) {
+      throw new Error("Invalid sessionId");
+    }
+
+    const session = await Session.findOne({ sessionId: String(sessionId) });
     if (session) {
       session.active = false;
       session.endedAt = new Date();
