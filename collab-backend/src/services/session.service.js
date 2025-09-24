@@ -1,12 +1,11 @@
+import crypto from "crypto";
 import Session from "../models/session.model.js";
 
 const SESSION_ID_REGEX = /^[a-zA-Z0-9-_]+$/;
 
 class SessionService {
   static generateSessionId() {
-    return `sess-${Date.now().toString(36)}-${Math.random()
-      .toString(36)
-      .slice(2, 8)}`;
+    return `sess-${crypto.randomUUID()}`;
   }
 
   static validateSessionId(sessionId) {
@@ -24,7 +23,9 @@ class SessionService {
   }
 
   static async createSession({ questionId, users, sessionId }) {
-    const ensuredSessionId = sessionId ?? this.generateSessionId();
+    const ensuredSessionId = sessionId
+      ? this.validateSessionId(sessionId)
+      : this.generateSessionId();
 
     const sanitizedUsers = Array.from(
       new Set(
@@ -49,14 +50,16 @@ class SessionService {
   }
 
   static async getSession(sessionId) {
-    this.validateSessionId(sessionId);
-    return await Session.findOne({ sessionId }).lean({ virtuals: true });
+    const sanitizedSessionId = this.validateSessionId(sessionId);
+    return await Session.findOne({ sessionId: sanitizedSessionId }).lean({
+      virtuals: true,
+    });
   }
 
   static async endSession(sessionId) {
-    this.validateSessionId(sessionId);
+    const sanitizedSessionId = this.validateSessionId(sessionId);
 
-    const session = await Session.findOne({ sessionId });
+    const session = await Session.findOne({ sessionId: sanitizedSessionId });
     if (!session) {
       return null;
     }
@@ -75,9 +78,12 @@ class SessionService {
   }
 
   static async saveSnapshot({ sessionId, code, language, userId }) {
-    this.validateSessionId(sessionId);
+    const sanitizedSessionId = this.validateSessionId(sessionId);
 
-    const session = await Session.findOne({ sessionId, active: true });
+    const session = await Session.findOne({
+      sessionId: sanitizedSessionId,
+      active: true,
+    });
     if (!session) {
       return null;
     }
