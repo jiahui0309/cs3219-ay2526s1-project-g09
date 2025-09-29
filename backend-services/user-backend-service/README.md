@@ -21,7 +21,7 @@ Express.js service that:
 - MongoDB Atlas
 - npm
 
-1. Open Command Line/Terminal and navigate into the `user-service` directory.
+1. Open Command Line/Terminal and navigate into the `user-backend-service` directory.
 
 2. Run the command: `npm install`. This will install all the necessary dependencies.
 
@@ -33,7 +33,7 @@ Express.js service that:
 
 ## Running with Docker
 
-1. Follow steps 1 to 3 from Running User Service.
+1. Follow steps 1 to 3 from [Running User Service](#running-user-service).
 
 2. Run `docker compose up --build`.
 
@@ -72,6 +72,7 @@ src/
 ## API
 
 Base URL: `http://localhost:5277/api/user-service`
+
 Routes:
 `http://localhost:5277/api/user-service/auth`
 `http://localhost:5277/api/user-service/users`
@@ -133,7 +134,7 @@ Every **POST**, **PUT**, **PATCH** or **DELETE** request requires a CSRF Token.
   {
     "message": "Created new user SampleUser1 successfully",
     "data": {
-      "id": "<user-unique-id>",
+      "id": "<userId>",
       "username": "SampleUser1",
       "email": "sample1@gmail.com",
       "isAdmin": false,
@@ -155,12 +156,13 @@ Every **POST**, **PUT**, **PATCH** or **DELETE** request requires a CSRF Token.
   - Postman Usage: Refer to [CSRF Token](#csrf-token)
 
 - Body
-  - Required: `email` (string), `password` (string)
+  - Required: `email` (string), `password` (string), `rememberMe` (boolean)
 
     ```json
     {
       "email": "sample1@gmail.com",
-      "password": "SecurePassword"
+      "password": "SecurePassword",
+      "rememberMe": "false"
     }
     ```
 
@@ -189,12 +191,6 @@ Every **POST**, **PUT**, **PATCH** or **DELETE** request requires a CSRF Token.
   - Required: `userId` path parameter
 
   - Example: `http://localhost:5277/api/user-service/users/60c72b2f9b1d4c3a2e5f8b4c`
-
-- Headers
-  - Required: `Authorization: Bearer <JWT_ACCESS_TOKEN>`
-
-  - Postman Usage: Select Auth -> Auth Type -> Bearer Token, then
-    copy and paste the `<jwt-access-token>` from logging in.
 
 - Expected Response:
   ```json
@@ -237,12 +233,6 @@ Every **POST**, **PUT**, **PATCH** or **DELETE** request requires a CSRF Token.
       "password": "SecurePassword"
     }
     ```
-
-- Headers
-  - Required: `Authorization: Bearer <JWT_ACCESS_TOKEN>`
-
-  - Postman Usage: Select Auth -> Auth Type -> Bearer Token, then
-    copy and paste the `<jwt-access-token>` from logging in.
 
 - Expected Response:
   ```json
