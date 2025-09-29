@@ -1,5 +1,7 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
+import csurf from "csurf";
 
 import userRoutes from "./routes/user-routes.js";
 import authRoutes from "./routes/auth-routes.js";
@@ -8,8 +10,6 @@ const app = express();
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-// allow cross-origin requests to reach the Express.js server
-// from frontend domain
 
 const whitelist = [
   "http://localhost:5173",
@@ -30,7 +30,7 @@ app.use(
         callback(new Error("Not allowed by CORS"));
       }
     },
-    credentials: true, // if you need cookies/auth headers
+    credentials: true, // for cookies/auth headers
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: [
       "Origin",
@@ -38,9 +38,25 @@ app.use(
       "Content-Type",
       "Accept",
       "Authorization",
+      "X-CSRF-Token",
     ],
   }),
 ); // config cors so that front-end can use
+
+app.use(cookieParser());
+// CSRF handling
+app.use(
+  csurf({
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Lax",
+    },
+  }),
+);
+app.get("/api/csrf-token", (req, res) => {
+  res.json({ csrfToken: req.csrfToken() });
+});
 
 app.use("/api/user-service/users", userRoutes);
 app.use("/api/user-service/auth", authRoutes);

@@ -5,8 +5,48 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "../../context/useAuth";
+import { UserService } from "../../api/UserService";
+import { useState } from "react";
 
-const AccountDeletionSection = () => {
+interface AccountDeletionSectionProps {
+  onAccountDeleted?: () => void;
+}
+
+const AccountDeletionSection: React.FC<AccountDeletionSectionProps> = ({
+  onAccountDeleted,
+}) => {
+  const { user, logout } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const handleDeleteAccount = async () => {
+    if (!user) {
+      setMessage("You must be logged in to delete your account.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setMessage("");
+
+      await UserService.deleteUser(user.id);
+      logout();
+
+      // Redirect to landing page
+      onAccountDeleted?.();
+
+      setMessage("Account deleted successfully.");
+    } catch (err) {
+      if (err instanceof Error) {
+        setMessage(err.message || "Failed to delete account.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
       <CardHeader>
@@ -20,14 +60,37 @@ const AccountDeletionSection = () => {
           <CardDescription className="text-red-400">
             Permanently delete the account and remove access from all workspaces
           </CardDescription>
+          {message && <p className="text-sm text-red-400 mt-2">{message}</p>}
         </div>
         <div className="w-[150px]">
-          <Button
-            variant="destructive"
-            className="w-full bg-red-600 hover:bg-red-700 text-white"
-          >
-            Delete account
-          </Button>
+          {!confirming ? (
+            <Button
+              variant="destructive"
+              className="w-full bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => setConfirming(true)}
+            >
+              Delete account
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="destructive"
+                className="w-full bg-red-700 hover:bg-red-800 text-white"
+                onClick={handleDeleteAccount}
+                disabled={loading}
+              >
+                {loading ? "Deleting..." : "Confirm delete?"}
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full border-gray-500 text-gray-200 hover:bg-gray-700"
+                onClick={() => setConfirming(false)}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+            </>
+          )}
         </div>
       </CardContent>
     </>
