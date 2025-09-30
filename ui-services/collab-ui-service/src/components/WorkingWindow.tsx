@@ -1,10 +1,21 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Tldraw } from "tldraw";
 import "tldraw/tldraw.css";
 import CollabEditor from "./collab/CollabEditor";
 
 const WorkingWindow: React.FC = () => {
+  const { sessionId, questionId, users } = useMemo(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const derivedUsers = searchParams.getAll("user");
+
+    return {
+      sessionId: searchParams.get("sessionId") ?? undefined,
+      questionId: searchParams.get("questionId") ?? undefined,
+      users: derivedUsers.length > 0 ? derivedUsers : [],
+    };
+  }, []);
+
   return (
     <div className="flex flex-1 bg-gray-800 rounded-lg shadow-md overflow-hidden relative">
       <Tabs defaultValue="code" className="flex flex-col flex-1">
@@ -23,7 +34,11 @@ const WorkingWindow: React.FC = () => {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="code" className="flex-1 p-4 overflow-hidden">
-          <CollabEditor questionId="q1" users={["u1", "u2"]} />
+          <CollabEditor
+            questionId={questionId}
+            users={users}
+            sessionId={sessionId}
+          />
         </TabsContent>
         <TabsContent value="whiteboard" className="flex-1 p-4 overflow-hidden">
           <Tldraw />
