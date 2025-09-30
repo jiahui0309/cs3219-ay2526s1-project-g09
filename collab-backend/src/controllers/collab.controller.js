@@ -41,7 +41,19 @@ export const endSession = async (req, res) => {
       return res.status(404).json({ error: "Session not found" });
     }
 
-    res.json({ success: true, session });
+    const io = req.app?.locals?.io;
+    if (io) {
+      io.to(session.sessionId).emit("sessionEnded", session.sessionId);
+      console.log("Emitted sessionEnded event for session:", session.sessionId);
+    }
+
+    res.json({
+      success: true,
+      session: {
+        ...session,
+        active: false,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Editor from "@monaco-editor/react";
 import io from "socket.io-client";
 
@@ -19,6 +19,47 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
     initialSessionId ?? null,
   );
   const [code, setCode] = useState("// Start coding here!\n");
+  const [sessionEnded, setSessionEnded] = useState(false);
+
+  const handleSessionLeave = useCallback(async () => {
+    try {
+      if (sessionId) {
+        const res = await fetch("http://localhost:5276/api/collab/end", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(
+            `Failed to end collaboration session (${res.status}): ${errorText}`,
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Failed to end collaboration session", error);
+    } finally {
+      setSessionEnded(true);
+      setSessionId(null);
+      setCode(
+        "// Session has ended. Please return to Matching to start a new one.\n",
+      );
+      window.location.href = "/matching";
+    }
+  }, [sessionId]);
+
+  useEffect(() => {
+    const handleLeaveEvent = () => {
+      void handleSessionLeave();
+    };
+
+    window.addEventListener("collab:leave-session", handleLeaveEvent);
+
+    return () => {
+      window.removeEventListener("collab:leave-session", handleLeaveEvent);
+    };
+  }, [handleSessionLeave]);
 
   useEffect(() => {
     if (!initialSessionId) {
@@ -26,6 +67,7 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
     }
 
     setSessionId(initialSessionId);
+    setSessionEnded(false);
     socket.emit("joinRoom", initialSessionId);
   }, [initialSessionId]);
 
@@ -66,6 +108,7 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
 
         const data = await res.json();
         setSessionId(data.session.sessionId);
+        setSessionEnded(false);
         socket.emit("joinRoom", data.session.sessionId);
       } catch (error) {
         console.error("Failed to initialise collaboration session", error);
@@ -78,17 +121,34 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
   useEffect(() => {
     if (!sessionId) return;
 
-    socket.on("codeUpdate", (newCode: string) => {
+    const handleCodeUpdate = (newCode: string) => {
       setCode(newCode);
-    });
+    };
+
+    const handleSessionEnded = (endedSessionId: string) => {
+      if (endedSessionId !== sessionId) {
+        return;
+      }
+
+      console.log("Session ended by server. Leaving editor.");
+      setSessionEnded(true);
+      setSessionId(null);
+      setCode(
+        "// Session has ended. Please return to Matching to start a new one.\n",
+      );
+    };
+
+    socket.on("codeUpdate", handleCodeUpdate);
+    socket.on("sessionEnded", handleSessionEnded);
 
     return () => {
-      socket.off("codeUpdate");
+      socket.off("codeUpdate", handleCodeUpdate);
+      socket.off("sessionEnded", handleSessionEnded);
     };
   }, [sessionId]);
 
   const handleEditorChange = (value: string | undefined) => {
-    if (value !== undefined && sessionId) {
+    if (value !== undefined && sessionId && !sessionEnded) {
       setCode(value);
       socket.emit("codeUpdate", { sessionId, newCode: value });
     }
@@ -101,7 +161,7 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       value={code}
       theme="vs-dark"
       onChange={handleEditorChange}
-      options={{ minimap: { enabled: false } }}
+      options={{ minimap: { enabled: false }, readOnly: sessionEnded }}
     />
   );
 };
