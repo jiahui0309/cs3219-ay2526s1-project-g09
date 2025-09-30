@@ -20,6 +20,9 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
   );
   const [code, setCode] = useState("// Start coding here!\n");
   const [sessionEnded, setSessionEnded] = useState(false);
+  const [sessionEndedMessage, setSessionEndedMessage] = useState<string | null>(
+    null,
+  );
 
   const handleSessionLeave = useCallback(async () => {
     try {
@@ -42,9 +45,7 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
     } finally {
       setSessionEnded(true);
       setSessionId(null);
-      setCode(
-        "// Session has ended. Please return to Matching to start a new one.\n",
-      );
+      setSessionEndedMessage(null);
       window.location.href = "/matching";
     }
   }, [sessionId]);
@@ -68,6 +69,7 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
 
     setSessionId(initialSessionId);
     setSessionEnded(false);
+    setSessionEndedMessage(null);
     socket.emit("joinRoom", initialSessionId);
   }, [initialSessionId]);
 
@@ -109,6 +111,7 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
         const data = await res.json();
         setSessionId(data.session.sessionId);
         setSessionEnded(false);
+        setSessionEndedMessage(null);
         socket.emit("joinRoom", data.session.sessionId);
       } catch (error) {
         console.error("Failed to initialise collaboration session", error);
@@ -133,8 +136,8 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       console.log("Session ended by server. Leaving editor.");
       setSessionEnded(true);
       setSessionId(null);
-      setCode(
-        "// Session has ended. Please return to Matching to start a new one.\n",
+      setSessionEndedMessage(
+        "Your partner has left the session. Please return to Matching to start a new one.",
       );
     };
 
@@ -155,14 +158,31 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
   };
 
   return (
-    <Editor
-      height="100%"
-      defaultLanguage="java"
-      value={code}
-      theme="vs-dark"
-      onChange={handleEditorChange}
-      options={{ minimap: { enabled: false }, readOnly: sessionEnded }}
-    />
+    <div className="relative h-full">
+      <Editor
+        height="100%"
+        defaultLanguage="java"
+        value={code}
+        theme="vs-dark"
+        onChange={handleEditorChange}
+        options={{ minimap: { enabled: false }, readOnly: sessionEnded }}
+      />
+
+      {sessionEndedMessage && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/80 text-white p-6 text-center">
+          <p className="text-xl font-semibold">{sessionEndedMessage}</p>
+          <button
+            type="button"
+            className="px-6 py-2 rounded bg-orange-600 hover:bg-orange-700"
+            onClick={() => {
+              window.location.href = "/matching";
+            }}
+          >
+            Return to Matching
+          </button>
+        </div>
+      )}
+    </div>
   );
 };
 
