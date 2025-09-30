@@ -27,13 +27,7 @@ class SessionService {
       ? this.validateSessionId(sessionId)
       : this.generateSessionId();
 
-    const sanitizedUsers = Array.from(
-      new Set(
-        (users ?? [])
-          .map((user) => (typeof user === "string" ? user.trim() : ""))
-          .filter((user) => user.length > 0),
-      ),
-    );
+    const sanitizedUsers = this.sanitizeUsers(users);
 
     if (sanitizedUsers.length === 0) {
       throw new Error("At least one valid user is required");
@@ -96,6 +90,30 @@ class SessionService {
     };
 
     await session.save();
+    return this.toResponse(session);
+  }
+
+  static sanitizeUsers(users) {
+    return Array.from(
+      new Set(
+        (users ?? [])
+          .map((user) => (typeof user === "string" ? user.trim() : ""))
+          .filter((user) => user.length > 0),
+      ),
+    );
+  }
+
+  static async findActiveSessionByUsers(users) {
+    const sanitizedUsers = this.sanitizeUsers(users);
+    if (sanitizedUsers.length === 0) {
+      return null;
+    }
+
+    const session = await Session.findOne({
+      users: { $in: sanitizedUsers },
+      active: true,
+    });
+
     return this.toResponse(session);
   }
 }

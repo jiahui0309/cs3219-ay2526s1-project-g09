@@ -90,3 +90,23 @@ export const saveSnapshot = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const getActiveSessionForUsers = async (req, res) => {
+  try {
+    const { users } = req.body ?? {};
+
+    if (!Array.isArray(users) || users.length === 0) {
+      return res.status(400).json({ error: "At least one user is required" });
+    }
+
+    const session = await SessionService.findActiveSessionByUsers(users);
+
+    if (!session) {
+      return res.status(404).json({ error: "No active session found" });
+    }
+
+    res.json({ success: true, session });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
