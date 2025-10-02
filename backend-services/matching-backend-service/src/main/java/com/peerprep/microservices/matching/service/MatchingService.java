@@ -102,7 +102,7 @@ public class MatchingService {
       // Complete this instance's future immediately. This is needed
       UserPreferenceResponse response = userPreferenceService.mapToResponse(matchRedisResult.getMatched());
       future.complete(new MatchOutcome(MatchOutcome.Status.MATCHED, response));
-      
+
       return future;
     }
 
