@@ -86,39 +86,6 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       );
       return;
     }
-
-    const init = async () => {
-      try {
-        console.log(
-          "Creating session for question:",
-          questionId,
-          "users:",
-          users,
-        );
-        const res = await fetch("http://localhost:5276/api/collab/start", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ questionId, users }),
-        });
-
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(
-            `Failed to create collaboration session (${res.status}): ${errorText}`,
-          );
-        }
-
-        const data = await res.json();
-        setSessionId(data.session.sessionId);
-        setSessionEnded(false);
-        setSessionEndedMessage(null);
-        socket.emit("joinRoom", data.session.sessionId);
-      } catch (error) {
-        console.error("Failed to initialise collaboration session", error);
-      }
-    };
-
-    init();
   }, [initialSessionId, questionId, sessionId, users]);
 
   useEffect(() => {
