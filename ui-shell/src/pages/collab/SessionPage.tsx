@@ -6,7 +6,6 @@ import WorkingWindow from "collabUiService/WorkingWindow";
 import NavHeader from "@components/collab/SessionHeader";
 import { useAuth } from "userUiService/useAuth";
 
-
 const SessionPage: React.FC = () => {
   const { user } = useAuth();
   return (

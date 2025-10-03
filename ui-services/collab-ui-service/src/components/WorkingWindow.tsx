@@ -29,7 +29,7 @@ const WorkingWindow: React.FC<CollabPageProps> = ({ user }) => {
     };
   }, []);
 
-    if (!user) {
+  if (!user) {
     return (
       <div className="flex items-center justify-center h-screen">
         <p>Please log in to access collab</p>
@@ -37,7 +37,6 @@ const WorkingWindow: React.FC<CollabPageProps> = ({ user }) => {
     );
   }
   console.log("SessionPage is rendering");
-
 
   console.log("WorkingWindow user:", user);
   const username = user.username;
