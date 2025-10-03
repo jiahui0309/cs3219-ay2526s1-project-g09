@@ -73,8 +73,7 @@ const MatchingSearch: React.FC<MatchSearchProps> = ({
           case "found": {
             const sortedUsers = [userId, result.data.userId].sort();
             const questionId =
-              result.data.questionId ??
-              "placeholder-questionId";
+              result.data.questionId ?? "placeholder-questionId";
 
             const isPrimaryRequester = sortedUsers[0] === userId;
 
