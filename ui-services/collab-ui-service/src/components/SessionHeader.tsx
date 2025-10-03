@@ -8,10 +8,17 @@ interface SessionHeaderProps {
 }
 
 const SessionHeader: React.FC<SessionHeaderProps> = ({ onLeaveSession }) => {
+  const searchParams = new URLSearchParams(window.location.search);
+  const sessionId = searchParams.get("sessionId");
+
+  if (!sessionId) {
+    throw new Error("Session ID is required for SessionTimer");
+  }
+
   return (
     <header className="flex items-center justify-between p-4 shadow-md">
       <div className="flex items-center space-x-4">
-        <SessionTimer />
+        <SessionTimer sessionId={sessionId} />
         <Button className="bg-orange-600 hover:bg-orange-700 text-white">
           Submit 0/2
         </Button>
