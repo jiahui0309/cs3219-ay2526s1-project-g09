@@ -1,6 +1,10 @@
+/**
+ * Set up connection to MongoDB using Mongoose and integrate it with Fastify.
+ */
 import fp from "fastify-plugin";
 import mongoose from "mongoose";
 import type { FastifyInstance } from "fastify";
+import { logger } from "../logger.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -21,11 +25,11 @@ export default fp(async (app: FastifyInstance) => {
     });
   }
 
-  app.log.info("Mongo connected");
+  logger.info("Mongo connected");
   app.decorate("mongo", mongoose);
 
   app.addHook("onClose", async () => {
     await mongoose.connection.close();
-    app.log.info("Mongo disconnected");
+    logger.info("Mongo disconnected");
   });
 });
