@@ -10,11 +10,20 @@ const LastSavedAttemptSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const ParticipantSchema = new mongoose.Schema(
+  {
+    userId: { type: String, required: true },
+    active: { type: Boolean, default: true },
+    lastSeenAt: { type: Date, default: Date.now },
+    sessionId: { type: String, required: true },
+  },
+  { _id: false },
+);
+
 const SessionSchema = new mongoose.Schema({
   sessionId: { type: String, required: true, unique: true },
   questionId: { type: String, required: true },
-  users: [{ type: String, required: true }],
-  activeUsers: [{ type: String }],
+  participants: { type: [ParticipantSchema], default: [] },
   active: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now },
   endedAt: { type: Date },
