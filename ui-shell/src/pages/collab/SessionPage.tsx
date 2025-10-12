@@ -4,7 +4,7 @@ import QuestionDisplay from "questionUiService/QuestionDisplay";
 import ChatWindow from "collabUiService/ChatWindow";
 import WorkingWindow from "collabUiService/WorkingWindow";
 import NavHeader from "@components/collab/SessionHeader";
-import { useAuth } from "userUiService/useAuth";
+import { useAuth } from "@/data/UserStore";
 
 const SessionPage: React.FC = () => {
   const { user } = useAuth();
