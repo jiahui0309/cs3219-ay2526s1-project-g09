@@ -31,28 +31,47 @@ export const startSession = async (req, res) => {
 
 export const endSession = async (req, res) => {
   try {
-    const { sessionId } = req.body;
+    const { sessionId, userId, force } = req.body;
     if (!sessionId) {
       return res.status(400).json({ error: "sessionId is required" });
     }
 
-    const session = await SessionService.endSession(sessionId);
+    const { session, ended, removedUser } = await SessionService.endSession(
+      sessionId,
+      { userId, force: Boolean(force) },
+    );
+
     if (!session) {
       return res.status(404).json({ error: "Session not found" });
     }
 
     const io = req.app?.locals?.io;
     if (io) {
-      io.to(session.sessionId).emit("sessionEnded", session.sessionId);
-      console.log("Emitted sessionEnded event for session:", session.sessionId);
+      if (ended) {
+        io.to(session.sessionId).emit("sessionEnded", session.sessionId);
+        console.log(
+          "Emitted sessionEnded event for session:",
+          session.sessionId,
+        );
+      } else if (removedUser) {
+        io.to(session.sessionId).emit("participantLeft", {
+          sessionId: session.sessionId,
+          userId: removedUser,
+        });
+        console.log(
+          "Emitted participantLeft event for session:",
+          session.sessionId,
+          "user:",
+          removedUser,
+        );
+      }
     }
 
     res.json({
       success: true,
-      session: {
-        ...session,
-        active: false,
-      },
+      session,
+      ended,
+      removedUser,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

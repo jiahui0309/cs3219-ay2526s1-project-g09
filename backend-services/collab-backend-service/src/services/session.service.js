@@ -36,6 +36,7 @@ class SessionService {
     const session = await Session.create({
       questionId,
       users: sanitizedUsers,
+      activeUsers: sanitizedUsers,
       sessionId: ensuredSessionId,
       active: true,
     });
@@ -50,25 +51,68 @@ class SessionService {
     });
   }
 
-  static async endSession(sessionId) {
+  static async endSession(sessionId, options = {}) {
     const sanitizedSessionId = this.validateSessionId(sessionId);
+    const { userId, force = false } = options;
+
+    const sanitizedUserId =
+      typeof userId === "string" && userId.trim().length > 0
+        ? userId.trim()
+        : null;
 
     const session = await Session.findOne({ sessionId: sanitizedSessionId });
     if (!session) {
-      return null;
+      return { session: null, ended: false, removedUser: null };
     }
 
-    session.active = false;
-    session.endedAt = new Date();
-    if (session.createdAt) {
-      session.timeTaken = Math.max(
-        0,
-        session.endedAt.getTime() - session.createdAt.getTime(),
+    const existingActiveUsers = Array.isArray(session.activeUsers)
+      ? session.activeUsers
+      : session.active
+        ? (session.users ?? [])
+        : [];
+
+    let nextActiveUsers = [...existingActiveUsers];
+    let removedUser = null;
+
+    if (sanitizedUserId) {
+      const filteredUsers = nextActiveUsers.filter(
+        (user) => user !== sanitizedUserId,
       );
+      if (filteredUsers.length !== nextActiveUsers.length) {
+        nextActiveUsers = filteredUsers;
+        removedUser = sanitizedUserId;
+      }
+    }
+
+    if (force) {
+      nextActiveUsers = [];
+    }
+
+    session.activeUsers = nextActiveUsers;
+
+    const shouldEnd = force || session.activeUsers.length === 0;
+    let ended = false;
+
+    if (shouldEnd && session.active !== false) {
+      session.active = false;
+      session.endedAt = new Date();
+      if (session.createdAt) {
+        session.timeTaken = Math.max(
+          0,
+          session.endedAt.getTime() - session.createdAt.getTime(),
+        );
+      }
+      ended = true;
+    } else if (!shouldEnd && session.active === false) {
+      session.active = true;
     }
 
     await session.save();
-    return this.toResponse(session);
+    return {
+      session: this.toResponse(session),
+      ended,
+      removedUser,
+    };
   }
 
   static async saveSnapshot({ sessionId, code, language, userId }) {
@@ -110,8 +154,11 @@ class SessionService {
     }
 
     const session = await Session.findOne({
-      users: { $in: sanitizedUsers },
       active: true,
+      $or: [
+        { activeUsers: { $in: sanitizedUsers } },
+        { activeUsers: { $exists: false }, users: { $in: sanitizedUsers } },
+      ],
     });
 
     return this.toResponse(session);
