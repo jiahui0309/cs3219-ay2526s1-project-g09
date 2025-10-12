@@ -1,10 +1,22 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { useAuth } from "userUiService/useAuth";
+import { useAuth } from "@/data/UserStore";
 
 const ProtectedRoute: React.FC = () => {
-  const { user } = useAuth();
+  const { user, loading, isLoggingOut } = useAuth();
 
-  if (!user || !user.isVerified) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        Loading...
+      </div>
+    );
+  }
+
+  if (!user && !isLoggingOut) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user && !user.isVerified) {
     return <Navigate to="/login" replace />;
   }
 

@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { UserService } from "../api/UserService";
-import type { User } from "../api/UserService";
-import { ApiError } from "../api/UserServiceErrors";
-import { useAuth } from "../context/useAuth";
+import type { User } from "@/types/User";
+import { UserService } from "@/api/UserService";
+import { UserServiceApiError } from "@/api/UserServiceErrors";
 
 interface OtpFormProps {
   user: User;
@@ -12,7 +11,6 @@ interface OtpFormProps {
 const OtpForm: React.FC<OtpFormProps> = ({ user, onOTPSuccess }) => {
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
   const [error, setError] = useState<string | null>(null);
-  const { login } = useAuth();
 
   const handleChange = (value: string, index: number) => {
     if (value.length > 1) return;
@@ -34,11 +32,9 @@ const OtpForm: React.FC<OtpFormProps> = ({ user, onOTPSuccess }) => {
     try {
       const res = await UserService.verifyOtp(user.email, code);
 
-      login(res.data);
-
       onOTPSuccess?.(res.data);
     } catch (err) {
-      if (err instanceof ApiError) {
+      if (err instanceof UserServiceApiError) {
         console.error("API Error: ", err);
         setError("API Error. Please refresh the page and try again.");
       } else {
@@ -48,6 +44,12 @@ const OtpForm: React.FC<OtpFormProps> = ({ user, onOTPSuccess }) => {
         );
       }
     }
+  };
+
+  const handleResendOTP = async () => {
+    // Generate and send otp to email
+    await UserService.sendOtp(user.email);
+    console.log("OTP has been sent.");
   };
 
   return (
@@ -86,7 +88,10 @@ const OtpForm: React.FC<OtpFormProps> = ({ user, onOTPSuccess }) => {
           Didn’t receive the code?{" "}
           <button
             type="button"
-            onClick={() => console.log("Resend OTP")}
+            onClick={() => {
+              console.log("Resend OTP");
+              handleResendOTP();
+            }}
             className="text-orange-600 font-medium hover:underline"
           >
             Resend it

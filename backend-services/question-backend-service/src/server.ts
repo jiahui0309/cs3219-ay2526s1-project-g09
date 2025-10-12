@@ -1,22 +1,23 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
-import leetcodeRoutes from "./routes/leetcode.js";
-import db from "./plugins/db.js";
+import leetcodeRoutes from "./routes.js";
+import db from "./db/connection.js";
+import rateLimit from "@fastify/rate-limit";
 
 export async function buildServer() {
   const app = Fastify({ logger: true });
 
   // plugins
-  await app.register(cors, { origin: "*" });
+  await app.register(cors, { origin: "*" }); // will need to change this in production
   await app.register(db);
-  await app.register(import("@fastify/rate-limit"), {
+  await app.register(rateLimit, {
     global: false,
-    max: 5,
-    timeWindow: "1 minute",
+    timeWindow: "15m",
+    max: 100,
   });
 
   // routes
-  await app.register(leetcodeRoutes, { prefix: "/api/v1" });
+  await app.register(leetcodeRoutes, { prefix: "/api/v1/questions" });
 
   return app;
 }

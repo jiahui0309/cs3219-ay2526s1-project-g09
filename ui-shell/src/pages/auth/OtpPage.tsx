@@ -1,14 +1,13 @@
 import { useEffect } from "react";
 import AuthLayout from "@components/auth/AuthLayout";
 import OtpForm from "userUiService/OtpForm";
-import type { User } from "../../api/AuthService";
-import { useNavigate, useLocation } from "react-router-dom";
+import type { User } from "@/types/User";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/data/UserStore";
 
 const OtpPage: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-
-  const user = (location.state as { user?: User })?.user;
+  const { user, setUser } = useAuth();
 
   useEffect(() => {
     if (!user) {
@@ -16,13 +15,18 @@ const OtpPage: React.FC = () => {
     }
   }, [user, navigate]);
 
-  if (!user) {
-    return null;
-  }
+  const handleOTPSuccess = async (verifiedUser: User) => {
+    console.log("OTP verified, logging user in.");
+    setUser(verifiedUser);
+    navigate("/matching");
+  };
 
   return (
     <AuthLayout>
-      <OtpForm user={user} onOTPSuccess={() => navigate("/matching")} />
+      <OtpForm
+        user={user}
+        onOTPSuccess={(verifiedUser: User) => handleOTPSuccess(verifiedUser)}
+      />
     </AuthLayout>
   );
 };
