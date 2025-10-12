@@ -5,12 +5,12 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * DTO representing the outcome of a matching request.
+ * DTO representing the outcome of a matching request. Sent to the Frontend.
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class MatchOutcome {
+public class MatchingOutcome {
   public enum Status {
     MATCHED,
     TIMEOUT,
@@ -19,4 +19,5 @@ public class MatchOutcome {
 
   private Status status;
   private UserPreferenceResponse match;
+  private String matchId;
 }

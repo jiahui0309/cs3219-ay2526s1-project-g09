@@ -1,26 +1,27 @@
 import React, { useEffect, useState } from "react";
 import MatchStatusUI from "./MatchSearchUi";
-import {
-  requestMatch,
-  type UserPreferences,
-  type MatchResult,
-  type MatchingResponse,
-} from "@/api/matchingService";
+import type { MatchResult, MatchingResponse } from "@/api/matchingService";
 
 interface MatchSearchProps {
-  userId: string;
-  preferences: Omit<UserPreferences, "userId">;
+  matchRequestPromise: Promise<MatchResult>;
+  matchRequestTimeout: number; // in milliseconds
   onMatchFound: (matchData: MatchingResponse) => void;
+  onMatchError: () => void;
+  onMatchNotFound: () => void;
   onCancel: () => void;
 }
 
 const MatchingSearch: React.FC<MatchSearchProps> = ({
-  userId,
-  preferences,
+  matchRequestPromise,
+  matchRequestTimeout,
   onMatchFound,
   onCancel,
+  onMatchError,
+  onMatchNotFound,
 }) => {
-  const [timeLeft, setTimeLeft] = useState(120);
+  // Convert milliseconds to seconds for display
+  const initialTimeSeconds = Math.floor(matchRequestTimeout / 1000);
+  const [timeLeft, setTimeLeft] = useState(initialTimeSeconds);
   const [messageIndex, setMessageIndex] = useState(0);
   const [view, setView] = useState<
     "searching" | "matchNotFound" | "matchError"
@@ -43,24 +44,19 @@ const MatchingSearch: React.FC<MatchSearchProps> = ({
   // Status messages
   useEffect(() => {
     if (view !== "searching") return;
-
     const interval = setInterval(() => {
       setMessageIndex((prev) => (prev + 1) % messages.length);
     }, 3000);
-
     return () => clearInterval(interval);
   }, [view, messages.length]);
 
-  // Match request
+  // Handle the match request promise (only runs once when component mounts)
   useEffect(() => {
     let aborted = false;
 
-    const doRequest = async () => {
+    const handleMatchResult = async () => {
       try {
-        const result: MatchResult = await requestMatch({
-          userId,
-          ...preferences,
-        });
+        const result = await matchRequestPromise;
 
         if (aborted) return;
 
@@ -86,18 +82,21 @@ const MatchingSearch: React.FC<MatchSearchProps> = ({
       }
     };
 
-    doRequest();
+    handleMatchResult();
 
     return () => {
       aborted = true;
     };
-  }, [userId, preferences, onMatchFound]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run once on mount
 
   return (
     <MatchStatusUI
       statusMessage={messages[messageIndex]}
       timeLeft={timeLeft}
       onCancel={onCancel}
+      onMatchError={onMatchError}
+      onMatchNotFound={onMatchNotFound}
       view={view}
     />
   );
