@@ -3,6 +3,7 @@ import Editor from "@monaco-editor/react";
 import io from "socket.io-client";
 
 const socket = io("http://localhost:5276");
+const HEARTBEAT_INTERVAL_MS = 30_000;
 
 interface CollabEditorProps {
   questionId?: string;
@@ -27,6 +28,7 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
   );
   const [participantPrompt, setParticipantPrompt] = useState<{
     userId?: string;
+    reason?: string;
   } | null>(null);
 
   const handleSessionLeave = useCallback(async () => {
@@ -87,6 +89,21 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
   }, [currentUserId, initialSessionId]);
 
   useEffect(() => {
+    if (!sessionId || sessionEnded) {
+      return;
+    }
+
+    socket.emit("heartbeat");
+    const intervalId = setInterval(() => {
+      socket.emit("heartbeat");
+    }, HEARTBEAT_INTERVAL_MS);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [sessionId, sessionEnded]);
+
+  useEffect(() => {
     if (initialSessionId || sessionId) {
       return;
     }
@@ -125,23 +142,41 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
     const handleParticipantLeft = (payload: {
       sessionId: string;
       userId?: string;
+      reason?: string;
     }) => {
       if (payload.sessionId !== sessionId) {
         return;
       }
 
-      setParticipantPrompt({ userId: payload.userId });
+      setParticipantPrompt({
+        userId: payload.userId,
+        reason: payload.reason,
+      });
       setSessionEndedMessage(null);
+    };
+
+    const handleInactiveTimeout = (payload: { sessionId: string }) => {
+      if (payload.sessionId !== sessionId) {
+        return;
+      }
+
+      setSessionEnded(true);
+      setSessionEndedMessage(
+        "You have been removed from this session due to inactivity.",
+      );
+      setParticipantPrompt(null);
     };
 
     socket.on("codeUpdate", handleCodeUpdate);
     socket.on("sessionEnded", handleSessionEnded);
     socket.on("participantLeft", handleParticipantLeft);
+    socket.on("inactiveTimeout", handleInactiveTimeout);
 
     return () => {
       socket.off("codeUpdate", handleCodeUpdate);
       socket.off("sessionEnded", handleSessionEnded);
       socket.off("participantLeft", handleParticipantLeft);
+      socket.off("inactiveTimeout", handleInactiveTimeout);
     };
   }, [sessionId]);
 
@@ -166,9 +201,13 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       {participantPrompt && !sessionEnded && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/80 text-white p-6 text-center">
           <p className="text-xl font-semibold">
-            {participantPrompt.userId
-              ? `${participantPrompt.userId} has left the session.`
-              : "Your partner has left the session."}
+            {participantPrompt.reason === "inactivity"
+              ? participantPrompt.userId
+                ? `${participantPrompt.userId} became inactive.`
+                : "Your partner became inactive."
+              : participantPrompt.userId
+                ? `${participantPrompt.userId} has left the session.`
+                : "Your partner has left the session."}
           </p>
           <p className="text-base text-white/80">
             Would you like to continue working alone or end the session?
