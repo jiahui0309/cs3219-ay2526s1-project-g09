@@ -64,6 +64,7 @@ const WorkingWindow: React.FC<CollabPageProps> = ({ user }) => {
             questionId={questionId}
             users={users}
             sessionId={sessionId}
+            currentUserId={username}
           />
         </TabsContent>
         <TabsContent value="whiteboard" className="flex-1 p-4 overflow-hidden">

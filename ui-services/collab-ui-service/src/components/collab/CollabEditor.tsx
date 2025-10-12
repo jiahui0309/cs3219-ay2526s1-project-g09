@@ -8,12 +8,14 @@ interface CollabEditorProps {
   questionId?: string;
   users?: string[];
   sessionId?: string | null;
+  currentUserId?: string;
 }
 
 const CollabEditor: React.FC<CollabEditorProps> = ({
   questionId,
   users = [],
   sessionId: initialSessionId,
+  currentUserId,
 }) => {
   const [sessionId, setSessionId] = useState<string | null>(
     initialSessionId ?? null,
@@ -23,14 +25,21 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
   const [sessionEndedMessage, setSessionEndedMessage] = useState<string | null>(
     null,
   );
+  const [participantPrompt, setParticipantPrompt] = useState<{
+    userId?: string;
+  } | null>(null);
 
   const handleSessionLeave = useCallback(async () => {
     try {
-      if (sessionId) {
+      const effectiveSessionId = sessionId ?? initialSessionId ?? null;
+      if (effectiveSessionId) {
         const res = await fetch("http://localhost:5276/api/collab/end", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId }),
+          body: JSON.stringify({
+            sessionId: effectiveSessionId,
+            userId: currentUserId,
+          }),
         });
 
         if (!res.ok) {
@@ -48,7 +57,7 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       setSessionEndedMessage(null);
       window.location.href = "/matching";
     }
-  }, [sessionId]);
+  }, [currentUserId, initialSessionId, sessionId]);
 
   useEffect(() => {
     const handleLeaveEvent = () => {
@@ -70,8 +79,12 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
     setSessionId(initialSessionId);
     setSessionEnded(false);
     setSessionEndedMessage(null);
-    socket.emit("joinRoom", initialSessionId);
-  }, [initialSessionId]);
+    setParticipantPrompt(null);
+    socket.emit("joinRoom", {
+      sessionId: initialSessionId,
+      userId: currentUserId,
+    });
+  }, [currentUserId, initialSessionId]);
 
   useEffect(() => {
     if (initialSessionId || sessionId) {
@@ -103,17 +116,32 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       console.log("Session ended by server. Leaving editor.");
       setSessionEnded(true);
       setSessionId(null);
+      setParticipantPrompt(null);
       setSessionEndedMessage(
-        "Your partner has left the session. Please return to Matching to start a new one.",
+        "This collaboration session has ended. Please return to Matching to start a new one.",
       );
+    };
+
+    const handleParticipantLeft = (payload: {
+      sessionId: string;
+      userId?: string;
+    }) => {
+      if (payload.sessionId !== sessionId) {
+        return;
+      }
+
+      setParticipantPrompt({ userId: payload.userId });
+      setSessionEndedMessage(null);
     };
 
     socket.on("codeUpdate", handleCodeUpdate);
     socket.on("sessionEnded", handleSessionEnded);
+    socket.on("participantLeft", handleParticipantLeft);
 
     return () => {
       socket.off("codeUpdate", handleCodeUpdate);
       socket.off("sessionEnded", handleSessionEnded);
+      socket.off("participantLeft", handleParticipantLeft);
     };
   }, [sessionId]);
 
@@ -134,6 +162,40 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
         onChange={handleEditorChange}
         options={{ minimap: { enabled: false }, readOnly: sessionEnded }}
       />
+
+      {participantPrompt && !sessionEnded && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/80 text-white p-6 text-center">
+          <p className="text-xl font-semibold">
+            {participantPrompt.userId
+              ? `${participantPrompt.userId} has left the session.`
+              : "Your partner has left the session."}
+          </p>
+          <p className="text-base text-white/80">
+            Would you like to continue working alone or end the session?
+          </p>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              className="px-6 py-2 rounded bg-orange-600 hover:bg-orange-700"
+              onClick={() => {
+                setParticipantPrompt(null);
+              }}
+            >
+              Continue Session
+            </button>
+            <button
+              type="button"
+              className="px-6 py-2 rounded border border-white/60 hover:bg-white/10"
+              onClick={() => {
+                setParticipantPrompt(null);
+                void handleSessionLeave();
+              }}
+            >
+              Leave Session
+            </button>
+          </div>
+        </div>
+      )}
 
       {sessionEndedMessage && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/80 text-white p-6 text-center">
