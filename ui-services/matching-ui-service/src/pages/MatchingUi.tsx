@@ -1,14 +1,8 @@
-import { useState } from "react";
 import QuestionPreferences from "@/components/question-preference/QuestionPreferences";
 import MatchFound from "@/components/MatchFound";
-
 import MatchSearch from "@/components/MatchSearch";
 import StartMatching from "@/components/StartMatching";
-import type { MatchingResponse, UserPreferences } from "@/api/matchingService";
-import { cancelMatch } from "@/api/matchingService";
-import type { CollabSession } from "@/api/collabService";
-
-type PageView = "initial" | "preferences" | "matching" | "matchFound";
+import { useMatching } from "@/hooks/useMatching";
 
 interface User {
   id: string;
@@ -21,15 +15,28 @@ interface User {
 
 interface MatchingPageProps {
   user: User | null;
+  onNavigate?: (path: string) => void;
 }
 
-const MatchingPage: React.FC<MatchingPageProps> = ({ user }) => {
-  const [currentView, setCurrentView] = useState<PageView>("initial");
-  const [matchData, setMatchData] = useState<MatchingResponse | null>(null);
-  const [preferences, setPreferences] = useState<UserPreferences | null>(null);
-  const [collabSession, setCollabSession] = useState<CollabSession | null>(
-    null,
-  );
+const MatchingPage: React.FC<MatchingPageProps> = ({ user, onNavigate }) => {
+  const {
+    currentView,
+    matchData,
+    preferences,
+    isWaitingForAcceptance,
+    showRejectedDialog,
+    matchRequestPromise,
+    timeoutConfig,
+    handleStartMatching,
+    handleConfirmPreferences,
+    handleMatchFound,
+    handleAcceptMatch,
+    handleRejectMatch,
+    handleCancel,
+    handleMatchError,
+    handleMatchNotFound,
+    handleDismissRejected,
+  } = useMatching({ username: user?.username ?? "", onNavigate });
 
   if (!user) {
     return (
@@ -38,31 +45,6 @@ const MatchingPage: React.FC<MatchingPageProps> = ({ user }) => {
       </div>
     );
   }
-
-  const username = user.username;
-
-  const handleStartMatching = (): void => {
-    setCurrentView("preferences");
-  };
-
-  const handleConfirmPreferences = (prefs: UserPreferences): void => {
-    setPreferences(prefs);
-    setCurrentView("matching");
-  };
-
-  const handleMatchFound = (): void => {
-    setCurrentView("matchFound");
-  };
-
-  const handleCancel = async (): Promise<void> => {
-    if (preferences) {
-      await cancelMatch(username);
-    }
-
-    setCurrentView("initial");
-    setMatchData(null);
-    setCollabSession(null);
-  };
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center text-center">
@@ -73,33 +55,33 @@ const MatchingPage: React.FC<MatchingPageProps> = ({ user }) => {
       {currentView === "preferences" && (
         <QuestionPreferences
           onConfirm={handleConfirmPreferences}
-          userId={username}
+          userId={user.username}
         />
       )}
 
-      {currentView === "matching" && preferences && (
+      {currentView === "matching" && preferences && matchRequestPromise && (
         <MatchSearch
-          userId={username}
-          preferences={preferences}
-          onMatchFound={(data, session) => {
-            setMatchData(data);
-            setCollabSession(session);
-            handleMatchFound();
-          }}
+          matchRequestPromise={matchRequestPromise}
+          matchRequestTimeout={timeoutConfig.matchRequestTimeout}
+          onMatchFound={handleMatchFound}
           onCancel={handleCancel}
+          onMatchNotFound={handleMatchNotFound}
+          onMatchError={handleMatchError}
         />
       )}
 
-      {currentView === "matchFound" && matchData && collabSession && (
+      {currentView === "matchFound" && matchData && (
         <MatchFound
-          matchedName={matchData.userId}
-          difficulty={matchData.difficulties[0]}
-          timeMins={matchData.minTime}
-          topic={matchData.topics[0]}
-          currentUser={username}
-          sessionId={collabSession.sessionId}
-          questionId={collabSession.questionId}
-          onCancel={handleCancel}
+          matchedName={matchData.match.userId}
+          difficulty={matchData.match.difficulties[0]}
+          timeMins={matchData.match.minTime}
+          topic={matchData.match.topics[0]}
+          acceptanceTimeout={timeoutConfig.matchAcceptanceTimeout}
+          onAccept={handleAcceptMatch}
+          onReject={handleRejectMatch}
+          isWaiting={isWaitingForAcceptance}
+          showRejectedDialog={showRejectedDialog}
+          onDismissRejected={handleDismissRejected}
         />
       )}
     </main>

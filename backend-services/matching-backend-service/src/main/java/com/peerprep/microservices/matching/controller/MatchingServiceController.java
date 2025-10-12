@@ -1,5 +1,7 @@
 package com.peerprep.microservices.matching.controller;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import org.springframework.http.HttpStatus;
@@ -8,20 +10,31 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.peerprep.microservices.matching.dto.MatchAcceptanceRequest;
+import com.peerprep.microservices.matching.dto.MatchAcceptanceResponse;
+import com.peerprep.microservices.matching.config.MatchingTimeoutConfig;
+import com.peerprep.microservices.matching.dto.MatchAcceptanceOutcome;
+import com.peerprep.microservices.matching.dto.MatchAcceptanceStatus;
+import com.peerprep.microservices.matching.dto.TimeoutConfig;
 import com.peerprep.microservices.matching.dto.UserPreferenceRequest;
 import com.peerprep.microservices.matching.dto.UserPreferenceResponse;
 import com.peerprep.microservices.matching.exception.UserPreferenceNotFoundException;
+import com.peerprep.microservices.matching.service.AcceptanceService;
 import com.peerprep.microservices.matching.service.MatchingService;
 import com.peerprep.microservices.matching.service.UserPreferenceService;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * REST controller for handling matching service operations.
+ */
 @RestController
 @RequestMapping("/api/v1/matching-service")
 @RequiredArgsConstructor
@@ -30,6 +43,17 @@ public class MatchingServiceController {
 
   private final MatchingService matchingService;
   private final UserPreferenceService userPreferenceService;
+  private final AcceptanceService matchingAcceptanceService;
+  private final MatchingTimeoutConfig timeoutConfig;
+
+  @GetMapping("config")
+  @ResponseStatus(HttpStatus.OK)
+  public TimeoutConfig updateUserPreference() {
+    TimeoutConfig timeoutConfigResponse = new TimeoutConfig(
+        timeoutConfig.getMatchRequest(),
+        timeoutConfig.getMatchAcceptance());
+    return timeoutConfigResponse;
+  }
 
   // ---------- [User Preference] ----------
   /**
@@ -93,17 +117,17 @@ public class MatchingServiceController {
    *         the matched user if found, or a 202 Accepted response if no match is
    *         found within the timeout
    */
-  @PutMapping("/matches")
+  @PutMapping("/match-requests")
   public CompletableFuture<ResponseEntity<?>> requestMatch(@RequestBody UserPreferenceRequest userPreferenceRequest) {
 
-    long timeoutMs = 30_000;
+    long timeoutMs = timeoutConfig.getMatchRequest();
 
     // Request a match asynchronously
     return matchingService.requestMatchAsync(userPreferenceRequest, timeoutMs)
         .thenApply(outcome -> {
           switch (outcome.getStatus()) {
             case MATCHED:
-              return ResponseEntity.ok(outcome.getMatch());
+              return ResponseEntity.ok(outcome);
             case TIMEOUT:
               return ResponseEntity.status(HttpStatus.ACCEPTED).body("No match found (timeout)");
             case CANCELLED:
@@ -124,10 +148,68 @@ public class MatchingServiceController {
    * @param userId the ID of the user whose pending match request should be
    *               cancelled
    */
-  @DeleteMapping("/matches/{userId}")
+  @DeleteMapping("/match-requests/{userId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void cancelMatch(@PathVariable String userId) {
     matchingService.cancelMatchRequest(userId);
+  }
+
+  // ---------- [Matching Acceptance] ----------
+  /**
+   * Connects a specified user to a match request.
+   * 
+   * @param userId                 the ID of the user connecting to the match
+   *                               request
+   * @param matchAcceptanceRequest the request body containing the match ID
+   * @return
+   */
+  @PostMapping("/match-requests/{userId}/connect")
+  public CompletableFuture<ResponseEntity<MatchAcceptanceResponse>> connectMatch(
+      @PathVariable String userId,
+      @RequestBody MatchAcceptanceRequest matchAcceptanceRequest) {
+
+    return matchingAcceptanceService
+        .connectMatch(userId, matchAcceptanceRequest.matchId())
+        .thenApply(response -> {
+          MatchAcceptanceResponse body = new MatchAcceptanceResponse(response);
+
+          if (response == MatchAcceptanceOutcome.Status.SUCCESS) {
+            return ResponseEntity.ok(body);
+          } else if (response == MatchAcceptanceOutcome.Status.REJECTED) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+          } else {
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(body);
+          }
+        });
+  }
+
+  /**
+   * Accepts a match request for the specified user.
+   * 
+   * @param userId                 the ID of the user accepting the match request
+   * @param matchAcceptanceRequest the request body containing the match ID
+   * @return
+   */
+  @PutMapping("/match-requests/{userId}/accept")
+  public MatchAcceptanceStatus acceptMatch(
+      @PathVariable String userId,
+      @RequestBody MatchAcceptanceRequest matchAcceptanceRequest) {
+
+    return matchingAcceptanceService.acceptMatch(userId, matchAcceptanceRequest.matchId());
+  }
+
+  /**
+   * Rejects a match request for the specified user.
+   * 
+   * @param userId                 the ID of the user rejecting the match request
+   * @param matchAcceptanceRequest the request body containing the match ID
+   */
+  @PutMapping("/match-requests/{userId}/reject")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public MatchAcceptanceStatus rejectMatch(@PathVariable String userId,
+      @RequestBody MatchAcceptanceRequest matchAcceptanceRequest) {
+
+    return matchingAcceptanceService.rejectMatch(userId, matchAcceptanceRequest.matchId());
   }
 
 }

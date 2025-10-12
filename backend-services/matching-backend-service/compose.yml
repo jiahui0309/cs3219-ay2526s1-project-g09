@@ -6,12 +6,10 @@ services:
 
   matching-service:
     build: .
-    container_name: matching-service
+    container_name: peerprep-matching-service
+    env_file:
+      - .env
     ports:
       - "5274:5274"
-    environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - MONGODB_URI=${MONGODB_URI}
     depends_on:
       - redis

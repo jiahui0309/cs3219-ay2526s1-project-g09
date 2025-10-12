@@ -67,16 +67,14 @@ services:
       - "6379:6379"
 
   matching-service:
+    container_name: peerprep-matching-service
     build:
       context: ./backend-services/matching-backend-service
       dockerfile: Dockerfile
-    container_name: matching-service
+    env_file:
+      - ./backend-services/matching-backend-service/.env
     ports:
       - "5274:5274"
-    environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - MONGODB_URI=${MONGODB_MATCHING_URI}
     depends_on:
       - redis
 
