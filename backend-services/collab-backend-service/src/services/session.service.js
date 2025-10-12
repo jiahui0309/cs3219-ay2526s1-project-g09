@@ -72,6 +72,54 @@ class SessionService {
       throw new Error("At least one valid user is required");
     }
 
+    const existingSession = await Session.findOne({
+      active: true,
+      "participants.userId": { $all: sanitizedUsers },
+    });
+
+    if (existingSession) {
+      const activeParticipants =
+        existingSession.participants?.filter((participant) => participant.active) ??
+        [];
+
+      const activeUserIds = activeParticipants.map(
+        (participant) => participant.userId,
+      );
+
+      const coversAllUsers = sanitizedUsers.every((user) =>
+        activeUserIds.includes(user),
+      );
+
+      if (
+        coversAllUsers &&
+        activeUserIds.length === sanitizedUsers.length &&
+        existingSession.questionId === questionId
+      ) {
+        const now = new Date();
+        let modified = false;
+
+        existingSession.participants?.forEach((participant) => {
+          if (!sanitizedUsers.includes(participant.userId)) {
+            return;
+          }
+
+          if (!participant.active) {
+            modified = true;
+          }
+
+          participant.active = true;
+          participant.lastSeenAt = now;
+          modified = true;
+        });
+
+        if (modified) {
+          await existingSession.save();
+        }
+
+        return this.toResponse(existingSession);
+      }
+    }
+
     const session = await Session.create({
       questionId,
       participants: this.mapParticipants(ensuredSessionId, sanitizedUsers),
@@ -84,9 +132,8 @@ class SessionService {
 
   static async getSession(sessionId) {
     const sanitizedSessionId = this.validateSessionId(sessionId);
-    return await Session.findOne({ sessionId: sanitizedSessionId }).lean({
-      virtuals: true,
-    });
+    const session = await Session.findOne({ sessionId: sanitizedSessionId });
+    return this.toResponse(session);
   }
 
   static async markActive(sessionId, userId) {
@@ -214,7 +261,7 @@ class SessionService {
       return null;
     }
 
-    const session = await Session.findOne({
+    const sessionDoc = await Session.findOne({
       active: true,
       participants: {
         $elemMatch: {
@@ -222,9 +269,9 @@ class SessionService {
           active: true,
         },
       },
-    }).lean({ virtuals: true });
+    });
 
-    return session;
+    return this.toResponse(sessionDoc);
   }
 }
 
