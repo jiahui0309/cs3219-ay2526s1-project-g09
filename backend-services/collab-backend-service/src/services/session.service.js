@@ -79,8 +79,9 @@ class SessionService {
 
     if (existingSession) {
       const activeParticipants =
-        existingSession.participants?.filter((participant) => participant.active) ??
-        [];
+        existingSession.participants?.filter(
+          (participant) => participant.active,
+        ) ?? [];
 
       const activeUserIds = activeParticipants.map(
         (participant) => participant.userId,
@@ -252,8 +253,6 @@ class SessionService {
     await session.save();
     return this.toResponse(session);
   }
-
-
 
   static async findActiveSessionByUsers(users) {
     const sanitizedUsers = this.sanitizeUsers(users);

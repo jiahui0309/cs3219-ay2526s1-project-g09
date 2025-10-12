@@ -13,6 +13,11 @@ import {
   requestMatch,
   getTimeoutConfig,
 } from "@/api/matchingService";
+import {
+  startCollabSession,
+  waitForActiveSession,
+  type CollabSession,
+} from "@/api/collabService";
 
 type PageView = "initial" | "preferences" | "matching" | "matchFound";
 
@@ -68,11 +73,44 @@ export function useMatching({ username, onNavigate }: UseMatchingProps) {
 
       if (response.status.toUpperCase() === "SUCCESS") {
         // Both users accepted - navigate to collab
-        if (onNavigate) {
-          onNavigate("/collab");
+        const participants = [username, data.match.userId].sort();
+        const isPrimaryRequester = participants[0] === username;
+        const questionId = data.match.questionId ?? "placeholder-questionId";
+
+        let createdSession: CollabSession | null = null;
+
+        try {
+          if (isPrimaryRequester) {
+            createdSession = await startCollabSession({
+              questionId,
+              users: participants,
+            });
+          } else {
+            createdSession = await waitForActiveSession(participants);
+          }
+
+          if (!createdSession) {
+            throw new Error("No active session created");
+          }
+
+          // navigate to collab page
+          if (onNavigate) {
+            const params = new URLSearchParams();
+            params.set("sessionId", createdSession.sessionId);
+            params.set("questionId", createdSession.questionId);
+            participants.forEach((userId) => params.append("user", userId));
+            onNavigate(`/collab?${params.toString()}`);
+          }
+        } catch (sessionError) {
+          console.error(
+            "Failed to initialise collaboration session",
+            sessionError,
+          );
         }
       } else if (response.status.toUpperCase() === "REJECTED") {
         setShowRejectedDialog(true);
+      } else {
+        setIsWaitingForAcceptance(true);
       }
     } catch (err) {
       console.error("Failed to connect to match", err);

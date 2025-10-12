@@ -1,3 +1,5 @@
+import type { CollabSession } from "@/api/collabService";
+
 export interface UserPreferences {
   userId: string;
   topics: string[];
@@ -155,6 +157,7 @@ export async function createPreference(
 
 export interface MatchAcceptanceResponse {
   status: "SUCCESS" | "REJECTED" | "PENDING";
+  session?: CollabSession | null;
   match: {
     matchId: string;
     user1Id: string;
