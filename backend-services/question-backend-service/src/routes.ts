@@ -15,6 +15,9 @@ import crypto from "crypto";
 if (!process.env.ADMIN_TOKEN) {
   throw new Error("ADMIN_TOKEN environment variable must be set");
 }
+
+type Difficulty = "Easy" | "Medium" | "Hard";
+
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
 const MAX_TIME_LIMIT_MINUTES = 240;
 
@@ -52,28 +55,44 @@ const leetcodeRoutes: FastifyPluginCallback = (app: FastifyInstance) => {
   });
 
   /**
-   * Check if a question exists based on categoryTitle and difficulty.
-   * Returns 400 if params are missing.
-   * Returns true or false.
+   * Check if questions exist based on categoryTitle and difficulty.
+   * Returns 400 if the body is malformed or missing data.
+   * Returns a list of true/false for each category and difficulty combination.
    */
-  app.get<{
-    Querystring: {
-      categoryTitle: string;
-      difficulty: "Easy" | "Medium" | "Hard";
+  app.post<{
+    Body: {
+      categories: {
+        [category: string]: ("Easy" | "Medium" | "Hard")[]; // category as key and difficulty levels as values
+      };
     };
-  }>("/exists", async (req, reply) => {
-    const { categoryTitle, difficulty } = req.query;
+  }>("/exists-categories-difficulties", async (req, reply) => {
+    const { categories } = req.body;
 
-    if (!categoryTitle || !difficulty) {
+    if (!categories || Object.keys(categories).length === 0) {
       return reply.status(400).send({
-        error: "Missing required parameters: categoryTitle, difficulty",
+        error: "Missing required body: categories",
       });
     }
 
-    const exists = await withDbLimit(() =>
-      Question.exists({ categoryTitle, difficulty }),
-    );
-    return !!exists; // returns just true or false
+    const result: {
+      [category: string]: {
+        [difficulty in "Easy" | "Medium" | "Hard"]?: boolean;
+      };
+    } = {};
+
+    // Iterate through the categories and check for each difficulty
+    for (const [categoryTitle, difficulties] of Object.entries(categories)) {
+      result[categoryTitle] = {};
+
+      for (const difficulty of difficulties) {
+        const exists = await withDbLimit(() =>
+          Question.exists({ categoryTitle, difficulty }),
+        );
+        result[categoryTitle][difficulty] = !!exists;
+      }
+    }
+
+    return reply.send(result);
   });
 
   /**
@@ -82,32 +101,59 @@ const leetcodeRoutes: FastifyPluginCallback = (app: FastifyInstance) => {
    * Returns 404 if no question found.
    * Returns the question document if found.
    */
-  app.get<{
-    Querystring: {
-      categoryTitle: string;
-      difficulty: "Easy" | "Medium" | "Hard";
+  app.post<{
+    Body: {
+      categories: { [category: string]: ("Easy" | "Medium" | "Hard")[] }; // categoryTitle as key, array of difficulties as value
     };
   }>("/random", async (req, reply) => {
-    const { categoryTitle, difficulty } = req.query;
+    const { categories } = req.body;
 
-    if (!categoryTitle || !difficulty) {
+    if (!categories || Object.keys(categories).length === 0) {
       return reply.status(400).send({
-        error: "Missing required parameters: categoryTitle, difficulty",
+        error: "Missing required body: categories",
       });
     }
 
-    const [randomQuestion] = await withDbLimit(() =>
-      Question.aggregate<QuestionDoc>([
-        { $match: { categoryTitle, difficulty } },
-        { $sample: { size: 1 } }, // MongoDB picks 1 random document
-      ]),
+    const pairs = Object.entries(categories).flatMap(
+      ([categoryTitle, diffs]) =>
+        Array.isArray(diffs) && diffs.length
+          ? diffs.map((difficulty) => ({ categoryTitle, difficulty }))
+          : [],
     );
 
-    if (!randomQuestion) {
-      return reply.status(404).send({ error: "No question found" });
+    if (pairs.length === 0) {
+      return reply
+        .status(400)
+        .send({ error: "No (category, difficulty) pairs provided" });
     }
 
-    return randomQuestion;
+    const valid: Difficulty[] = ["Easy", "Medium", "Hard"];
+    for (const p of pairs) {
+      if (!valid.includes(p.difficulty as Difficulty)) {
+        return reply
+          .status(400)
+          .send({ error: `Invalid difficulty '${p.difficulty}'` });
+      }
+    }
+
+    try {
+      // Single aggregation: pool all matches, then pick 1 at random
+      const [randomQuestion] = await withDbLimit(() =>
+        Question.aggregate<QuestionDoc>([
+          { $match: { $or: pairs } },
+          { $sample: { size: 1 } },
+        ]),
+      );
+
+      if (!randomQuestion) {
+        return reply.status(404).send({ error: "No question found" });
+      }
+
+      return reply.send(randomQuestion);
+    } catch (err) {
+      req.log?.error({ err }, "Failed to fetch random question");
+      return reply.status(500).send({ error: "Internal Server Error" });
+    }
   });
 
   /**
