@@ -27,6 +27,14 @@ const SessionHeader: React.FC<SessionHeaderProps> = ({ onLeaveSession }) => {
           variant="ghost"
           className="text-white-400 bg-black hover:bg-gray-700"
           onClick={() => {
+            const confirmed = window.confirm(
+              "Are you sure you want to leave this collaboration session?",
+            );
+
+            if (!confirmed) {
+              return;
+            }
+
             if (onLeaveSession) {
               void onLeaveSession();
             }
