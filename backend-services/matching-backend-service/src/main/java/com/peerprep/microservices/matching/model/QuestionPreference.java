@@ -1,6 +1,8 @@
 package com.peerprep.microservices.matching.model;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -22,65 +24,45 @@ import lombok.NonNull;
 public class QuestionPreference {
 
   @NonNull
-  @JsonDeserialize(as = HashSet.class)
-  private final Set<String> topics;
-
-  @NonNull
-  @JsonDeserialize(as = HashSet.class)
-  private final Set<String> difficulties;
-
-  private final int minTime;
-  private final int maxTime;
+  @JsonDeserialize(as = HashMap.class)
+  private final Map<String, Set<String>> topics; // topic -> selected difficulties
 
   /**
    * Custom build method
    */
   public static class QuestionPreferenceBuilder {
     public QuestionPreference build() {
-      validate(topics, difficulties, minTime, maxTime);
-      return new QuestionPreference(topics, difficulties, minTime, maxTime);
+      validate(topics);
+      return new QuestionPreference(topics);
     }
   }
 
   /**
    * Constructor with validation
    * 
-   * @param topics       the set of topics that a user prefers.
-   * @param difficulties the set of difficulties that a user prefers.
-   * @param minTime      the minimum time that a user is willing to use for a
-   *                     question.
-   * @param maxTime      the maximum time that a user is willing to use for a
-   *                     question.
-   * 
+   * @param topics the map of topics to selected difficulties.
    */
   @JsonCreator
   public QuestionPreference(
-      @JsonProperty("topics") Set<String> topics,
-      @JsonProperty("difficulties") Set<String> difficulties,
-      @JsonProperty("minTime") int minTime,
-      @JsonProperty("maxTime") int maxTime) {
-    validate(topics, difficulties, minTime, maxTime);
+      @JsonProperty("topics") Map<String, Set<String>> topics) {
+    validate(topics);
     this.topics = topics;
-    this.difficulties = difficulties;
-    this.minTime = minTime;
-    this.maxTime = maxTime;
   }
 
   /**
    * Validation logic for constructor
    */
-  private static void validate(Set<String> topics, Set<String> difficulties, int minTime, int maxTime) {
-
-    if (topics == null || topics.isEmpty())
+  private static void validate(Map<String, Set<String>> topics) {
+    if (topics == null || topics.isEmpty()) {
       throw new IllegalArgumentException("topics cannot be null or empty");
-    if (difficulties == null || difficulties.isEmpty())
-      throw new IllegalArgumentException("difficulties cannot be null or empty");
-    if (minTime <= 0)
-      throw new IllegalArgumentException("minTime must be > 0");
-    if (maxTime <= 0)
-      throw new IllegalArgumentException("maxTime must be > 0");
-    if (maxTime < minTime)
-      throw new IllegalArgumentException("maxTime must be >= minTime");
+    }
+
+    for (Map.Entry<String, Set<String>> entry : topics.entrySet()) {
+      if (entry.getValue() == null || entry.getValue().isEmpty()) {
+        throw new IllegalArgumentException(
+            "Each topic must have at least one selected difficulty: " + entry.getKey());
+      }
+    }
   }
 
   /**
@@ -88,25 +70,24 @@ public class QuestionPreference {
    * difficulties between this user and another user.
    */
   public QuestionPreference getOverlap(QuestionPreference other) {
-    Set<String> overlappingTopics = new HashSet<>(this.topics);
-    overlappingTopics.retainAll(other.topics);
+    Map<String, Set<String>> overlappingTopics = new HashMap<>();
 
-    Set<String> overlappingDifficulties = new HashSet<>(this.difficulties);
-    overlappingDifficulties.retainAll(other.difficulties);
+    for (Map.Entry<String, Set<String>> entry : this.topics.entrySet()) {
+      String topic = entry.getKey();
+      Set<String> otherDiffs = other.topics.get(topic);
 
-    // Calculate overlapping time range
-    int overlapMinTime = Math.max(this.minTime, other.minTime);
-    int overlapMaxTime = Math.min(this.maxTime, other.maxTime);
+      if (otherDiffs != null) {
+        Set<String> commonDiffs = new HashSet<>(entry.getValue());
+        commonDiffs.retainAll(otherDiffs);
 
-    if (overlapMinTime > overlapMaxTime) {
-      overlapMinTime = overlapMaxTime;
+        if (!commonDiffs.isEmpty()) {
+          overlappingTopics.put(topic, commonDiffs);
+        }
+      }
     }
 
     return QuestionPreference.builder()
         .topics(overlappingTopics)
-        .difficulties(overlappingDifficulties)
-        .minTime(overlapMinTime)
-        .maxTime(overlapMaxTime)
         .build();
   }
 }

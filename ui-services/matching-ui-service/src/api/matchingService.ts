@@ -1,17 +1,11 @@
 export interface UserPreferences {
   userId: string;
-  topics: string[];
-  difficulties: string[];
-  minTime: number;
-  maxTime: number;
+  topics: Record<string, string[]>;
 }
 
 export interface MatchDetails {
   userId: string;
-  topics: string[];
-  difficulties: string[];
-  minTime: number;
-  maxTime: number;
+  topics: Record<string, string[]>;
 }
 
 export interface MatchingResponse {

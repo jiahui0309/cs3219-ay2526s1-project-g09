@@ -1,8 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import TopicSelector from "./TopicSelector";
-import DifficultySelector from "./DifficultySelector";
-import TimeLimitSelector from "./TimeLimitSelector";
 import {
   requestPreference,
   createPreference,
@@ -18,12 +16,10 @@ const QuestionPreferences: React.FC<QuestionPreferencesProps> = ({
   userId,
   onConfirm,
 }) => {
-  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
-  const [selectedDifficulties, setSelectedDifficulties] = useState<string[]>(
-    [],
-  );
-  const [timeMin, setTimeMin] = useState<number>(10);
-  const [timeMax, setTimeMax] = useState<number>(120);
+  // Now using map/hash structure
+  const [selectedTopics, setSelectedTopics] = useState<
+    Record<string, string[]>
+  >({});
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,10 +29,7 @@ const QuestionPreferences: React.FC<QuestionPreferencesProps> = ({
   const handleConfirm = async () => {
     const preferences: UserPreferences = {
       userId,
-      topics: selectedTopics,
-      difficulties: selectedDifficulties,
-      minTime: timeMin,
-      maxTime: timeMax,
+      topics: selectedTopics, // now map instead of string[]
     };
 
     setSubmitting(true);
@@ -63,10 +56,7 @@ const QuestionPreferences: React.FC<QuestionPreferencesProps> = ({
 
       if (result.status === "found") {
         const prefs = result.data as UserPreferences;
-        setSelectedTopics(prefs.topics ?? []);
-        setSelectedDifficulties(prefs.difficulties ?? []);
-        setTimeMin(prefs.minTime ?? 10);
-        setTimeMax(prefs.maxTime ?? 120);
+        setSelectedTopics(prefs.topics ?? {}); // set map/hash
       }
 
       setLoading(false);
@@ -77,31 +67,19 @@ const QuestionPreferences: React.FC<QuestionPreferencesProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [userId]); // ✅ run only when userId changes
+  }, [userId]);
 
   if (loading) {
     return <div className="text-white p-8">Loading preferences...</div>;
   }
 
   return (
-    <div className="text-white p-8">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div className="w-[40vw] p-8">
+      <div className="grid grid-cols-1">
         <TopicSelector
           selectedTopics={selectedTopics}
           setSelectedTopics={setSelectedTopics}
         />
-        <div className="space-y-8 text-start">
-          <DifficultySelector
-            selectedDifficulties={selectedDifficulties}
-            setSelectedDifficulties={setSelectedDifficulties}
-          />
-          <TimeLimitSelector
-            timeMin={timeMin}
-            timeMax={timeMax}
-            setTimeMin={(value) => setTimeMin(value)}
-            setTimeMax={(value) => setTimeMax(value)}
-          />
-        </div>
       </div>
 
       {error && <p className="text-red-500 mt-4">{error}</p>}

@@ -36,6 +36,7 @@ const MatchingPage: React.FC<MatchingPageProps> = ({ user, onNavigate }) => {
     handleMatchError,
     handleMatchNotFound,
     handleDismissRejected,
+    getFirstTopicDifficultyAndTime,
   } = useMatching({ username: user?.username ?? "", onNavigate });
 
   if (!user) {
@@ -70,12 +71,10 @@ const MatchingPage: React.FC<MatchingPageProps> = ({ user, onNavigate }) => {
         />
       )}
 
-      {currentView === "matchFound" && matchData && (
+      {currentView === "matchFound" && matchData?.match && (
         <MatchFound
-          matchedName={matchData.match.userId}
-          difficulty={matchData.match.difficulties[0]}
-          timeMins={matchData.match.minTime}
-          topic={matchData.match.topics[0]}
+          matchedName={matchData.match.userId ?? ""}
+          {...getFirstTopicDifficultyAndTime(matchData.match)}
           acceptanceTimeout={timeoutConfig.matchAcceptanceTimeout}
           onAccept={handleAcceptMatch}
           onReject={handleRejectMatch}

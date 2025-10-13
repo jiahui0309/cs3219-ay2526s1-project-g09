@@ -55,23 +55,22 @@ public class UserPreference {
   }
 
   /**
-   * Create UserPreference from a flat map that contains userId, topics,
-   * difficulties, minTime, maxTime
+   * Create UserPreference from a flat map that contains userId and topics map.
    */
+  @SuppressWarnings("unchecked")
   public static UserPreference fromFlatMap(Map<String, Object> flatMap) {
     String userId = (String) flatMap.get("userId");
-    @SuppressWarnings("unchecked")
-    Set<String> topics = Set.copyOf((java.util.List<String>) flatMap.get("topics"));
-    @SuppressWarnings("unchecked")
-    Set<String> difficulties = Set.copyOf((java.util.List<String>) flatMap.get("difficulties"));
-    int minTime = (Integer) flatMap.get("minTime");
-    int maxTime = (Integer) flatMap.get("maxTime");
+    Map<String, Object> rawTopics = (Map<String, Object>) flatMap.get("topics");
+    Map<String, java.util.Set<String>> topics = new HashMap<>();
+
+    rawTopics.forEach((topic, diffsObj) -> {
+      if (diffsObj instanceof java.util.List<?> list) {
+        topics.put(topic, Set.copyOf((java.util.List<String>) list));
+      }
+    });
 
     QuestionPreference qp = QuestionPreference.builder()
         .topics(topics)
-        .difficulties(difficulties)
-        .minTime(minTime)
-        .maxTime(maxTime)
         .build();
 
     return UserPreference.builder()
@@ -91,9 +90,8 @@ public class UserPreference {
   }
 
   /**
-   * Returns a new UserPreference containing another user and the overlapping
-   * question preferences
-   * between this user and another user.
+   * Returns a new UserPreference containing overlapping question preferences with
+   * another user.
    */
   public UserPreference getOverlap(UserPreference other) {
     QuestionPreference overlap = this.questionPreference.getOverlap(other.questionPreference);
@@ -104,16 +102,61 @@ public class UserPreference {
   }
 
   /**
-   * Flatten UserPreference into a Map suitable for Redis Lua script.
-   * Includes userId, topics, difficulties, minTime, maxTime.
+   * Flatten UserPreference into a Map suitable for Redis or JSON storage.
+   * Includes userId and topics map.
    */
   public Map<String, Object> toRedisMap() {
     Map<String, Object> map = new HashMap<>();
     map.put("userId", this.userId);
     map.put("topics", this.questionPreference.getTopics());
-    map.put("difficulties", this.questionPreference.getDifficulties());
-    map.put("minTime", this.questionPreference.getMinTime());
-    map.put("maxTime", this.questionPreference.getMaxTime());
     return map;
+  }
+
+  /**
+   * Constructs a UserPreference from a nested map representation (e.g., from
+   * Redis JSON).
+   * Expected format:
+   * {
+   * "userId": "user123",
+   * "questionPreference": {
+   * "topics": {
+   * "OOP": ["Easy", "Medium"],
+   * "Python": ["Hard"]
+   * }
+   * }
+   * }
+   */
+  @SuppressWarnings("unchecked")
+  public static UserPreference fromNestedMap(Map<String, Object> nestedMap) {
+    if (nestedMap == null) {
+      throw new IllegalArgumentException("nestedMap cannot be null");
+    }
+
+    String userId = (String) nestedMap.get("userId");
+    if (userId == null || userId.isEmpty()) {
+      throw new IllegalArgumentException("userId cannot be null or empty");
+    }
+
+    Map<String, Object> topicsMapRaw = (Map<String, Object>) nestedMap.get("topics");
+    if (topicsMapRaw == null) {
+      throw new IllegalArgumentException("topics cannot be null");
+    }
+
+    // Convert topics map with List<String> values
+    Map<String, Set<String>> topicsMap = new HashMap<>();
+    for (Map.Entry<String, Object> entry : topicsMapRaw.entrySet()) {
+      String topic = entry.getKey();
+      Set<String> difficulties = Set.copyOf((java.util.List<String>) entry.getValue());
+      topicsMap.put(topic, difficulties);
+    }
+
+    QuestionPreference qp = QuestionPreference.builder()
+        .topics(topicsMap)
+        .build();
+
+    return UserPreference.builder()
+        .userId(userId)
+        .questionPreference(qp)
+        .build();
   }
 }

@@ -93,13 +93,13 @@ const MatchFound: React.FC<MatchFoundProps> = ({
         </h2>
         <div className="flex gap-2 mt-3 justify-center">
           <span className="inline-flex items-center px-5 py-1.5 rounded text-xl font-medium bg-white text-black">
+            {topic}
+          </span>
+          <span className="inline-flex items-center px-5 py-1.5 rounded text-xl font-medium bg-white text-black">
             {difficulty}
           </span>
           <span className="inline-flex items-center px-5 py-1.5 rounded text-xl font-medium bg-white text-black">
             {formatTime(timeMins)}
-          </span>
-          <span className="inline-flex items-center px-5 py-1.5 rounded text-xl font-medium bg-white text-black">
-            {topic}
           </span>
         </div>
       </div>
