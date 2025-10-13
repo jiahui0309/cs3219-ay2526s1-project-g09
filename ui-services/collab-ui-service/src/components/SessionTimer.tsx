@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 interface SessionTimerProps {
@@ -52,8 +52,38 @@ const SessionTimer: React.FC<SessionTimerProps> = ({
 }) => {
   const [time, setTime] = useState(initialTimeInSeconds);
   const [loading, setLoading] = useState(true);
+  const hasExpiredRef = useRef(false);
 
   const isLowTime = time < 300;
+
+  const endSessionOnTimeout = useCallback(async () => {
+    if (hasExpiredRef.current) {
+      return;
+    }
+
+    if (!sessionId) {
+      return;
+    }
+
+    hasExpiredRef.current = true;
+
+    try {
+      const res = await fetch("http://localhost:5276/api/collab/end", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, force: true }),
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(
+          `Failed to terminate session on timeout (${res.status}): ${errorText}`,
+        );
+      }
+    } catch (err) {
+      console.error("Failed to end session after timer expiry:", err);
+    }
+  }, [sessionId]);
 
   useEffect(() => {
     let timerId: NodeJS.Timeout;
@@ -83,6 +113,7 @@ const SessionTimer: React.FC<SessionTimerProps> = ({
 
         if (session.timeTaken && session.timeTaken > 0) {
           initialRemaining = 0;
+          hasExpiredRef.current = true;
         }
 
         setTime(initialRemaining);
@@ -109,6 +140,18 @@ const SessionTimer: React.FC<SessionTimerProps> = ({
       if (timerId) clearInterval(timerId);
     };
   }, [sessionId, initialTimeInSeconds]);
+
+  useEffect(() => {
+    if (loading) {
+      return;
+    }
+
+    if (time !== 0) {
+      return;
+    }
+
+    void endSessionOnTimeout();
+  }, [endSessionOnTimeout, loading, time]);
 
   const formatTime = (totalSeconds: number) => {
     const hours = Math.floor(totalSeconds / 3600);
