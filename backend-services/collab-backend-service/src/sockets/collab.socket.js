@@ -64,7 +64,7 @@ export const initSocket = (server) => {
       }
 
       try {
-        const result = await SessionService.endSession(sessionId, { userId });
+        const result = await SessionService.disconnectSession(sessionId, { userId });
 
         if (!result.session) {
           socket.data.markedInactive = true;
@@ -178,7 +178,7 @@ export const initSocket = (server) => {
       }
 
       try {
-        const { session, ended, removedUser } = await SessionService.endSession(
+        const { session, ended, removedUser } = await SessionService.disconnectSession(
           sessionId,
           { userId },
         );

@@ -160,10 +160,10 @@ class SessionService {
   }
 
   static async removeParticipant(sessionId, userId) {
-    return await this.endSession(sessionId, { userId });
+    return await this.disconnectSession(sessionId, { userId });
   }
 
-  static async endSession(sessionId, options = {}) {
+  static async disconnectSession(sessionId, options = {}) {
     const sanitizedSessionId = this.validateSessionId(sessionId);
     const { userId, force = false } = options;
 
@@ -254,9 +254,9 @@ class SessionService {
     return this.toResponse(session);
   }
 
-  static async findActiveSessionByUsers(users) {
-    const sanitizedUsers = this.sanitizeUsers(users);
-    if (sanitizedUsers.length === 0) {
+  static async findActiveSessionByUser(userId) {
+    const sanitizedUserId = this.sanitizeUserId(userId);
+    if (!sanitizedUserId) {
       return null;
     }
 
@@ -264,7 +264,7 @@ class SessionService {
       active: true,
       participants: {
         $elemMatch: {
-          userId: { $in: sanitizedUsers },
+          userId: { $eq: sanitizedUserId },
           active: true,
         },
       },
