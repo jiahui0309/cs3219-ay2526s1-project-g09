@@ -76,7 +76,7 @@ export function useMatching({ username, onNavigate }: UseMatchingProps) {
         // Both users accepted - navigate to collab
         const participants = [username, data.match.userId].sort();
         const isPrimaryRequester = participants[0] === username;
-        const questionId = data.match.questionId ?? "placeholder-questionId";
+        const questionId = "placeholder-questionId";
 
         let createdSession: CollabSession | null = null;
 
