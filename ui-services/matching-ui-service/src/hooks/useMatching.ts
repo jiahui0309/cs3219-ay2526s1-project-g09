@@ -95,18 +95,10 @@ export function useMatching({ username, onNavigate }: UseMatchingProps) {
             throw new Error("No active session created");
           }
 
-          const connectedSession = await connectToSession(
-            username,
-            sessionRecord.sessionId,
-          );
+          await connectToSession(username, sessionRecord.sessionId);
 
-          // navigate to collab page
           if (onNavigate) {
-            const params = new URLSearchParams();
-            params.set("sessionId", connectedSession.sessionId);
-            params.set("questionId", connectedSession.questionId);
-            participants.forEach((userId) => params.append("user", userId));
-            onNavigate(`/collab?${params.toString()}`);
+            onNavigate("/collab");
           }
         } catch (sessionError) {
           console.error(
