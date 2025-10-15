@@ -3,7 +3,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Tldraw } from "tldraw";
 import "tldraw/tldraw.css";
 import CollabEditor from "./collab/CollabEditor";
-import { useCollabSession } from "../context/CollabSessionContext";
+import { useCollabSession } from "../context/CollabSessionHook";
 
 interface User {
   id: string;

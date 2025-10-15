@@ -2,7 +2,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 
 import SessionTimer from "./SessionTimer";
-import { useCollabSession } from "../context/CollabSessionContext";
+import { useCollabSession } from "../context/CollabSessionHook";
 
 interface SessionHeaderProps {
   onLeaveSession?: () => void | Promise<void>;

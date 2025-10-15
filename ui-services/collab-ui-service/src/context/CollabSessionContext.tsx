@@ -1,7 +1,6 @@
 import React, {
   createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -172,5 +171,4 @@ export const CollabSessionProvider: React.FC<ProviderProps> = ({
     </CollabSessionContext.Provider>
   );
 };
-
-export const useCollabSession = () => useContext(CollabSessionContext);
+export { CollabSessionContext };
