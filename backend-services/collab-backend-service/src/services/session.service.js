@@ -163,7 +163,6 @@ class SessionService {
     }
 
     const now = new Date();
-    const wasInactive = !participant.active;
     participant.active = true;
     participant.lastSeenAt = now;
     participant.sessionId = sanitizedSessionId;
@@ -177,7 +176,7 @@ class SessionService {
 
     return {
       session: this.toResponse(session),
-      addedUser: wasInactive,
+      addedUser: false,
     };
   }
 

@@ -16,6 +16,7 @@ export default defineConfig({
         "./WorkingWindow": "./src/components/WorkingWindow",
         "./SessionHeader": "./src/components/SessionHeader",
         "./ChatWindow": "./src/components/chat/ChatWindow",
+        "./CollabSessionContext": "./src/context/CollabSessionContext",
       },
       remotes: {
         userUiService: "http://localhost:5177/assets/remoteEntry.js",
