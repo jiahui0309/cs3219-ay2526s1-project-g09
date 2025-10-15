@@ -1,53 +1,156 @@
-import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 
 interface TopicSelectorProps {
-  selectedTopics: string[];
-  setSelectedTopics: React.Dispatch<React.SetStateAction<string[]>>;
+  selectedTopics: Record<string, string[]>; // e.g. { "OOP": ["Easy"], "Python": ["Hard"] }
+  setSelectedTopics: React.Dispatch<
+    React.SetStateAction<Record<string, string[]>>
+  >;
 }
 
-const topics = ["OOP", "Database", "Algorithm", "AI", "Python", "Java", "Ruby"];
+// Dummy topics in map/hash format
+const topics: Record<string, string[]> = {
+  OOP: ["Easy", "Medium"],
+  Database: ["Medium", "Hard"],
+  Algorithm: ["Easy", "Hard"],
+  AI: ["Medium", "Hard"],
+  Python: ["Easy", "Medium", "Hard"],
+  Java: ["Easy", "Medium"],
+  Ruby: ["Easy"],
+  Perl: ["Easy"],
+  Redis: ["Easy"],
+  SQL: ["Easy"],
+  JavaScript: ["Easy", "Medium"],
+  CSS: ["Easy", "Medium"],
+};
+
+// All possible difficulties (for alignment)
+const allDifficulties: string[] = ["Easy", "Medium", "Hard"];
 
 const TopicSelector: React.FC<TopicSelectorProps> = ({
   selectedTopics,
   setSelectedTopics,
 }) => {
-  const handleToggle = (topic: string) => {
-    setSelectedTopics((prev) =>
-      prev.includes(topic) ? prev.filter((t) => t !== topic) : [...prev, topic],
-    );
+  const handleDifficultyToggle = (topic: string, difficulty: string) => {
+    setSelectedTopics((prev) => {
+      const newMap = { ...prev };
+      const currentDiffs = newMap[topic] || [];
+
+      if (currentDiffs.includes(difficulty)) {
+        const updated = currentDiffs.filter((d) => d !== difficulty);
+        if (updated.length === 0) delete newMap[topic];
+        else newMap[topic] = updated;
+      } else {
+        newMap[topic] = [...currentDiffs, difficulty];
+      }
+      return newMap;
+    });
   };
 
-  const handleSelectAll = (checked: boolean) => {
-    setSelectedTopics(checked ? topics : []);
+  const handleTopicToggle = (topic: string, available: string[]) => {
+    setSelectedTopics((prev) => {
+      const newMap = { ...prev };
+      const currentDiffs = newMap[topic] || [];
+
+      if (currentDiffs.length === available.length) {
+        // all selected → deselect all
+        delete newMap[topic];
+      } else {
+        // select all available difficulties
+        newMap[topic] = [...available];
+      }
+      return newMap;
+    });
   };
+
+  const handleSelectAll = () => {
+    const fullSelection = Object.fromEntries(
+      Object.entries(topics).map(([topic, diffs]) => [topic, [...diffs]]),
+    );
+    setSelectedTopics(fullSelection);
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedTopics({});
+  };
+
+  const isAllSelected =
+    Object.keys(selectedTopics).length === Object.keys(topics).length;
 
   return (
-    <div className="rounded-lg shadow-lg">
-      <h1 className="text-start text-4xl font-semibold mb-4">
-        Question Preferences
-      </h1>
-      <div className="flex items-center mb-4">
-        <Checkbox
-          checked={selectedTopics.length === topics.length}
-          onCheckedChange={(checked) => handleSelectAll(!!checked)}
-          className="mr-2"
-        />
-        <span>Select All</span>
+    <div className="rounded-lg shadow-lg p-4">
+      {/* Header row: title + select all button */}
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-4xl font-semibold text-white">
+          Question Preferences
+        </h1>
+
+        <Button
+          onClick={isAllSelected ? handleDeselectAll : handleSelectAll}
+          variant="outline"
+          className="px-3 py-1 text-black"
+        >
+          {isAllSelected ? "Deselect All" : "Select All"}
+        </Button>
       </div>
-      <div className="space-y-2 w-[20vw] h-[30vh] overflow-y-auto p-3">
-        {topics.map((topic) => (
-          <div
-            key={topic}
-            onClick={() => handleToggle(topic)}
-            className={`p-4 rounded-md cursor-pointer transition-colors duration-200 ${
-              selectedTopics.includes(topic)
-                ? "bg-orange-500 text-white"
-                : "bg-gray-600 hover:bg-gray-500"
-            }`}
-          >
-            {topic}
-          </div>
-        ))}
+
+      {/* Topics list */}
+      <div className="space-y-4 overflow-y-auto h-[50vh] p-3">
+        {Object.entries(topics).map(([topic, difficulties]) => {
+          const selectedDiffs = selectedTopics[topic] || [];
+
+          return (
+            <div
+              key={topic}
+              className="flex items-center justify-between gap-4"
+            >
+              {/* Topic button */}
+              <Button
+                onClick={() => handleTopicToggle(topic, difficulties)}
+                variant={
+                  selectedDiffs.length === difficulties.length
+                    ? "default"
+                    : "outline"
+                }
+                className={`w-1/3 text-left ${
+                  selectedDiffs.length === difficulties.length
+                    ? "bg-orange-500 text-white"
+                    : "text-black"
+                } px-3 py-1`}
+              >
+                {topic}
+              </Button>
+
+              {/* Difficulty buttons */}
+              <div className="w-2/3 flex flex-wrap gap-2 justify-between">
+                {allDifficulties.map((diff) => {
+                  const isAvailable = difficulties.includes(diff);
+                  const isSelected = selectedDiffs.includes(diff);
+
+                  return (
+                    <Button
+                      key={diff}
+                      size="sm"
+                      variant={isSelected ? "default" : "outline"}
+                      disabled={!isAvailable}
+                      className={`w-30 text-center px-3 py-1 ${
+                        isSelected
+                          ? "bg-orange-500 text-white"
+                          : !isAvailable
+                            ? "opacity-50 cursor-not-allowed"
+                            : "text-black border-white"
+                      }`}
+                      onClick={() =>
+                        isAvailable && handleDifficultyToggle(topic, diff)
+                      }
+                    >
+                      {diff}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

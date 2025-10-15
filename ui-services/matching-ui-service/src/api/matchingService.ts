@@ -2,19 +2,12 @@ import type { CollabSession } from "@/api/collabService";
 
 export interface UserPreferences {
   userId: string;
-  topics: string[];
-  difficulties: string[];
-  minTime: number;
-  maxTime: number;
+  topics: Record<string, string[]>;
 }
 
 export interface MatchDetails {
   userId: string;
-  topics: string[];
-  difficulties: string[];
-  minTime: number;
-  maxTime: number;
-  questionId?: string;
+  topics: Record<string, string[]>;
 }
 
 export interface MatchingResponse {

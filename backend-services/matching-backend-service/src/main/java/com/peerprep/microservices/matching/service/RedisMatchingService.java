@@ -117,14 +117,16 @@ public class RedisMatchingService {
    * Atomically finds a match for the given user preference and removes the
    * matched entry, if no match found, put the request into the pool instead.
    *
-   * Executes a Lua script to ensure that matching, removal and putting happen
+   * Executes a Lua script to ensure that matching, removal, and putting happen
    * atomically.
    * If a compatible match is found, it is returned as a {@link UserPreference};
    * otherwise, {@code null} is returned.
    *
-   * @param request the {@link UserPreference} for which to find a match
-   * @return the matched {@link UserPreference}, or {@code null} if no match
-   *         exists
+   * @param userPreference the {@link UserPreference} for which to find a match
+   * @param requestId      unique request ID for this matching request
+   * @return the {@link MatchingRedisResult} containing the matched preference
+   *         (or null if no match), the matched requestId, and any info about old
+   *         request removal
    * @throws UserPreferenceSerializationException   if serialization of the
    *                                                request fails
    * @throws UserPreferenceMappingException         if the matched JSON cannot be
@@ -135,53 +137,55 @@ public class RedisMatchingService {
    */
   @SuppressWarnings("unchecked")
   public MatchingRedisResult match(UserPreference userPreference, String requestId) {
-
+    // Wrap the request with requestId for Lua script
     Map<String, Object> redisValue = new HashMap<>();
     redisValue.put("requestId", requestId);
-    redisValue.put("userPreference", userPreference.toRedisMap());
+    redisValue.put("userPreference", userPreference.toRedisMap()); // now contains topics as Map<String, List<String>>
 
-    log.info("Match input result: {}", redisValue.toString());
+    log.info("Match input: {}", redisValue);
 
     String reqJson;
-
     try {
       reqJson = objectMapper.writeValueAsString(redisValue);
     } catch (JsonProcessingException e) {
       throw new UserPreferenceSerializationException("Failed to serialize UserPreference", e);
     }
 
-    // Atomically finds a match and removes the matched entry or puts the new
-    // request if no matched entry exists
-    String resultJson = redisTemplate.execute(matchScript,
+    // Execute Lua script atomically
+    String resultJson = redisTemplate.execute(
+        matchScript,
         Collections.singletonList(MATCH_POOL_KEY),
-        reqJson, USER_PREF_KEY_PREFIX);
+        reqJson,
+        USER_PREF_KEY_PREFIX);
 
     Assert.notNull(resultJson, "Redis script returned null, indicating a failure in execution");
-    log.info("Match script result: {}", resultJson.toString());
+    log.info("Match script result: {}", resultJson);
 
     Map<String, Object> resultMap;
     try {
       resultMap = objectMapper.readValue(resultJson, new TypeReference<>() {
       });
     } catch (JsonMappingException e) {
-      throw new UserPreferenceMappingException("Failed to map JSON to UserPreference", e);
+      throw new UserPreferenceMappingException("Failed to map JSON to Map", e);
     } catch (JsonProcessingException e) {
-      throw new UserPreferenceDeserializationException("Failed to deserialize JSON for UserPreference", e);
+      throw new UserPreferenceDeserializationException("Failed to deserialize JSON", e);
     }
 
     Boolean oldDeleted = (Boolean) resultMap.get("oldRequestDeleted");
     String oldRequestId = (String) resultMap.get("oldRequestId");
 
     Map<String, Object> matchedMap = (Map<String, Object>) resultMap.get("matched");
-
     if (matchedMap == null) {
       return new MatchingRedisResult(oldDeleted, oldRequestId, null, null);
     }
 
     String matchedRequestId = (String) matchedMap.get("requestId");
-    UserPreference matchedPref = UserPreference.fromFlatMap(
-        (Map<String, Object>) matchedMap.get("userPreference"));
+
+    // Convert matched userPreference map back to UserPreference
+    Map<String, Object> matchedUserPrefMap = (Map<String, Object>) matchedMap.get("userPreference");
+    UserPreference matchedPref = UserPreference.fromNestedMap(matchedUserPrefMap);
 
     return new MatchingRedisResult(oldDeleted, oldRequestId, matchedPref, matchedRequestId);
   }
+
 }

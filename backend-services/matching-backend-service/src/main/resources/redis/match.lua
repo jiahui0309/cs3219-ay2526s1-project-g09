@@ -2,6 +2,43 @@
 -- KEYS[1] = poolKey (matchmaking:pool)
 -- ARGV[1] = requestJson (serialized UserPreference with requestId)
 -- ARGV[2] = userPrefKeyPrefix (userpref:)
+-- 
+-- Example requestJson (ARGV[1]):
+-- {
+--   "requestId": "req123",
+--   "userPreference": {
+--     "userId": "userA",
+--     "topics": {
+--       "OOP": ["Easy", "Medium"],
+--       "Python": ["Hard"]
+--     }
+--   }
+-- }
+--
+-- Example response (when a match is found):
+-- {
+--   "matched": {
+--     "userPreference": {
+--       "userId": "userB",
+--       "topics": {
+--         "OOP": ["Medium"],
+--         "Python": ["Hard"]
+--       }
+--     },
+--     "requestId": "req456"
+--   },
+--   "selfRequestId": "req123",
+--   "oldRequestDeleted": false,
+--   "oldRequestId": null
+-- }
+--
+-- Example response (no match found):
+-- {
+--   "matched": null,
+--   "selfRequestId": "req123",
+--   "oldRequestDeleted": false,
+--   "oldRequestId": null
+-- }
 local poolKey = KEYS[1]
 local requestJson = ARGV[1]
 local userPrefKeyPrefix = ARGV[2] or "userpref:"
@@ -44,7 +81,7 @@ if existingJson then
     end
 end
 
--- Helper functions
+-- Helper function: convert array to set
 local function toSet(arr)
     local s = {}
     if arr and type(arr) == "table" then
@@ -57,21 +94,24 @@ local function toSet(arr)
     return s
 end
 
-local function hasOverlap(arr1, arr2)
-    local set1 = toSet(arr1)
-    if arr2 and type(arr2) == "table" then
-        for _, v in ipairs(arr2) do
-            if set1[v] then
-                return true
+-- Helper function: check topic + difficulty overlap
+local function hasTopicDifficultyOverlap(reqTopics, candidateTopics)
+    for topic, reqDiffs in pairs(reqTopics) do
+        local candDiffs = candidateTopics[topic]
+        if candDiffs then
+            local reqSet = toSet(reqDiffs)
+            for _, diff in ipairs(candDiffs) do
+                if reqSet[diff] then
+                    return true
+                end
             end
         end
     end
     return false
 end
 
--- Convert request arrays to sets
-local reqTopics = toSet(req.topics)
-local reqDiffs = toSet(req.difficulties)
+-- Parse request topics (map)
+local reqTopics = req.topics -- table: topic -> array of difficulties
 
 -- Check for a match
 local candidates = redis.call("ZRANGE", poolKey, 0, -1)
@@ -85,14 +125,12 @@ for _, candidateId in ipairs(candidates) do
             end)
             if parseSuccess and candidateWrapper then
                 local candidate = candidateWrapper.userPreference
-                local timeOverlap = true
-                if req.minTime and req.maxTime and candidate.minTime and candidate.maxTime then
-                    timeOverlap = (candidate.minTime <= req.maxTime and req.minTime <= candidate.maxTime)
-                end
-                local diffOverlap = hasOverlap(candidate.difficulties, req.difficulties)
-                local topicOverlap = hasOverlap(candidate.topics, req.topics)
+                local candidateTopics = candidate.topics -- table: topic -> array of difficulties
 
-                if timeOverlap and diffOverlap and topicOverlap then
+                -- Check topic + difficulty overlap
+                local matchFound = hasTopicDifficultyOverlap(reqTopics, candidateTopics)
+
+                if matchFound then
                     redis.call("ZREM", poolKey, candidateId)
                     redis.call("DEL", userPrefKeyPrefix .. candidateId)
                     redis.log(redis.LOG_NOTICE, "Match found: " .. userId .. " with " .. candidateId)
@@ -102,7 +140,7 @@ for _, candidateId in ipairs(candidates) do
                             userPreference = candidate,
                             requestId = candidateWrapper.requestId
                         },
-                        selfRequestId = requestId, -- the current request's ID
+                        selfRequestId = requestId,
                         oldRequestDeleted = oldRequestDeleted,
                         oldRequestId = oldRequestId
                     })

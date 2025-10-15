@@ -1,5 +1,6 @@
 package com.peerprep.microservices.matching.service;
 
+import java.util.Map;
 import java.util.Set;
 
 import org.springframework.stereotype.Service;
@@ -86,10 +87,7 @@ public class UserPreferenceService {
   public UserPreference mapToUserPreference(UserPreferenceRequest userPref) {
 
     QuestionPreference questionPreference = QuestionPreference.builder()
-        .topics(Set.copyOf(userPref.topics()))
-        .difficulties(Set.copyOf(userPref.difficulties()))
-        .minTime(userPref.minTime())
-        .maxTime(userPref.maxTime())
+        .topics(Map.copyOf(userPref.topics()))
         .build();
 
     return UserPreference.builder()
@@ -110,10 +108,7 @@ public class UserPreferenceService {
 
     return new UserPreferenceResponse(
         userPreference.getUserId(),
-        questionPreference.getTopics(),
-        questionPreference.getDifficulties(),
-        questionPreference.getMinTime(),
-        questionPreference.getMaxTime());
+        questionPreference.getTopics());
   }
 
 }
