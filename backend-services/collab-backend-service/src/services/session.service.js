@@ -137,6 +137,50 @@ class SessionService {
     return this.toResponse(session);
   }
 
+  static async connectParticipant(sessionId, userId) {
+    const sanitizedSessionId = this.validateSessionId(sessionId);
+    const sanitizedUserId = this.sanitizeUserId(userId);
+
+    if (!sanitizedUserId) {
+      throw new Error("Invalid userId");
+    }
+
+    const session = await Session.findOne({ sessionId: sanitizedSessionId });
+    if (!session) {
+      return { session: null, addedUser: false };
+    }
+
+    const participants = Array.isArray(session.participants)
+      ? session.participants
+      : [];
+
+    const participant = participants.find(
+      (entry) => entry.userId === sanitizedUserId,
+    );
+
+    if (!participant) {
+      return { session: null, addedUser: false };
+    }
+
+    const now = new Date();
+    const wasInactive = !participant.active;
+    participant.active = true;
+    participant.lastSeenAt = now;
+    participant.sessionId = sanitizedSessionId;
+
+    session.participants = participants;
+    if (session.active === false) {
+      session.active = true;
+    }
+
+    await session.save();
+
+    return {
+      session: this.toResponse(session),
+      addedUser: wasInactive,
+    };
+  }
+
   static async markActive(sessionId, userId) {
     const sanitizedSessionId = this.validateSessionId(sessionId);
     const sanitizedUserId = this.sanitizeUserId(userId);

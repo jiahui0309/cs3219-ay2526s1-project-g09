@@ -32,31 +32,32 @@ export const startSession = async (req, res) => {
 export const connectSession = async (req, res) => {
   try {
     const { userId } = req.params;
+    const { sessionId } = req.body ?? {};
 
     if (!userId) {
       return res.status(400).json({ error: "User ID is required" });
     }
 
-    const activeSession = await SessionService.getActiveSession(userId);
-
-    if (activeSession) {
-      return res.json({ success: true, session: activeSession, addedUser: null });
+    if (!sessionId || typeof sessionId !== "string") {
+      return res.status(400).json({ error: "sessionId is required" });
     }
 
-    const io = req.app?.locals?.io;
-    if (io) {
-      io.emit("sessionCreated", activeSession);
-      console.log(
-        "Emitted sessionCreated event for session:",
-        activeSession.sessionId,
-      );
+    const { session, addedUser } = await SessionService.connectParticipant(
+      sessionId,
+      userId,
+    );
+
+    if (!session) {
+      return res
+        .status(404)
+        .json({ error: "Session not found or user not part of session" });
     }
 
     res.json({ success: true, session, addedUser });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-}
+};
 
 export const disconnectSession = async (req, res) => {
   try {
@@ -66,10 +67,11 @@ export const disconnectSession = async (req, res) => {
       return res.status(400).json({ error: "sessionId is required" });
     }
 
-    const { session, ended, removedUser } = await SessionService.disconnectSession(
-      sessionId,
-      { userId, force: Boolean(force) },
-    );
+    const { session, ended, removedUser } =
+      await SessionService.disconnectSession(sessionId, {
+        userId,
+        force: Boolean(force),
+      });
 
     if (!session) {
       return res.status(404).json({ error: "Session not found" });
