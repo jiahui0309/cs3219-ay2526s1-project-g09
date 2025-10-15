@@ -92,26 +92,11 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
 
     let cancelled = false;
 
-    const connectAndJoin = async () => {
+    const connectAndJoin = () => {
       setSessionId(initialSessionId);
       setSessionEnded(false);
       setSessionEndedMessage(null);
       setParticipantPrompt(null);
-
-      if (currentUserId) {
-        try {
-          await fetch(
-            `${collabApiBase}connect/${encodeURIComponent(currentUserId)}`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ sessionId: initialSessionId }),
-            },
-          );
-        } catch (error) {
-          console.error("Failed to connect session participant", error);
-        }
-      }
 
       if (cancelled) {
         return;
@@ -123,7 +108,7 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       });
     };
 
-    void connectAndJoin();
+    connectAndJoin();
 
     return () => {
       cancelled = true;

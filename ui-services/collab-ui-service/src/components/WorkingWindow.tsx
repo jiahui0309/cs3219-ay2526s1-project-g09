@@ -1,8 +1,9 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Tldraw } from "tldraw";
 import "tldraw/tldraw.css";
 import CollabEditor from "./collab/CollabEditor";
+import { useCollabSession } from "../context/CollabSessionContext";
 
 interface User {
   id: string;
@@ -14,20 +15,21 @@ interface User {
 }
 
 interface CollabPageProps {
-  user: User | null;
+  user?: User | null;
 }
 
 const WorkingWindow: React.FC<CollabPageProps> = ({ user }) => {
-  const { sessionId, questionId, users } = useMemo(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const derivedUsers = searchParams.getAll("user");
+  const { session, loading, error, isHydrated } = useCollabSession();
 
-    return {
-      sessionId: searchParams.get("sessionId") ?? undefined,
-      questionId: searchParams.get("questionId") ?? undefined,
-      users: derivedUsers.length > 0 ? derivedUsers : [],
-    };
-  }, []);
+  if (!isHydrated) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-white/70">
+          Collaboration session unavailable in this view.
+        </p>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
@@ -36,11 +38,31 @@ const WorkingWindow: React.FC<CollabPageProps> = ({ user }) => {
       </div>
     );
   }
-  console.log("SessionPage is rendering");
 
-  console.log("WorkingWindow user:", user);
   const username = user.username;
-  console.log(username);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-white/70">Loading collaboration session…</p>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-red-400">
+          {error ?? "No active collaboration session found."}
+        </p>
+      </div>
+    );
+  }
+
+  const participants =
+    session.users ??
+    session.participants?.map((participant) => participant.userId) ??
+    [];
 
   return (
     <div className="flex flex-1 bg-gray-800 rounded-lg shadow-md overflow-hidden relative">
@@ -61,9 +83,9 @@ const WorkingWindow: React.FC<CollabPageProps> = ({ user }) => {
         </TabsList>
         <TabsContent value="code" className="flex-1 p-4 overflow-hidden">
           <CollabEditor
-            questionId={questionId}
-            users={users}
-            sessionId={sessionId}
+            questionId={session.questionId}
+            users={participants}
+            sessionId={session.sessionId}
             currentUserId={username}
           />
         </TabsContent>

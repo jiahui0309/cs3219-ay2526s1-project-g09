@@ -2,17 +2,36 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 
 import SessionTimer from "./SessionTimer";
+import { useCollabSession } from "../context/CollabSessionContext";
 
 interface SessionHeaderProps {
   onLeaveSession?: () => void | Promise<void>;
 }
 
 const SessionHeader: React.FC<SessionHeaderProps> = ({ onLeaveSession }) => {
-  const searchParams = new URLSearchParams(window.location.search);
-  const sessionId = searchParams.get("sessionId");
+  const { session, loading, error, isHydrated } = useCollabSession();
+  const sessionId = session?.sessionId ?? null;
+
+  if (!isHydrated) {
+    return null;
+  }
+
+  if (loading) {
+    return (
+      <header className="flex items-center justify-between p-4 shadow-md">
+        <p className="text-white/70">Connecting to session…</p>
+      </header>
+    );
+  }
 
   if (!sessionId) {
-    throw new Error("Session ID is required for SessionTimer");
+    return (
+      <header className="flex items-center justify-between p-4 shadow-md">
+        <p className="text-red-400">
+          {error ?? "No active collaboration session found."}
+        </p>
+      </header>
+    );
   }
 
   return (
