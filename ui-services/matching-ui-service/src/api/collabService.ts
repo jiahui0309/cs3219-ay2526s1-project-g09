@@ -28,7 +28,7 @@ interface ActiveSessionResponse {
 
 const rawBaseUrl =
   import.meta.env.VITE_COLLAB_SERVICE_API_LINK ??
-  "http://localhost:5276/api/collab/";
+  "http://localhost:5276/api/v1/collab-service/";
 
 const collabApiBase = rawBaseUrl.endsWith("/") ? rawBaseUrl : `${rawBaseUrl}/`;
 

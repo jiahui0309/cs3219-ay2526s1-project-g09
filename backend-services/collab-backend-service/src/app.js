@@ -10,6 +10,6 @@ app.use(express.json());
 
 connectDB();
 
-app.use("/api/collab", collabRoutes);
+app.use("/api/v1/collab-service", collabRoutes);
 
 export default app;

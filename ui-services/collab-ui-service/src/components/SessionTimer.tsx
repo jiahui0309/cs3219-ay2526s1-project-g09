@@ -25,10 +25,13 @@ interface SessionPayload {
 const retrieveStartTime = async (
   sessionId: string,
 ): Promise<SessionPayload> => {
-  const res = await fetch(`http://localhost:5276/api/collab/${sessionId}`, {
-    method: "GET",
-    headers: { "Content-Type": "application/json" },
-  });
+  const res = await fetch(
+    `http://localhost:5276/api/v1/collab-service/${sessionId}`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    },
+  );
 
   if (!res.ok) {
     const errorText = await res.text();
@@ -68,11 +71,14 @@ const SessionTimer: React.FC<SessionTimerProps> = ({
     hasExpiredRef.current = true;
 
     try {
-      const res = await fetch("http://localhost:5276/api/collab/end", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, force: true }),
-      });
+      const res = await fetch(
+        "http://localhost:5276/api/v1/collab-service/end",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId, force: true }),
+        },
+      );
 
       if (!res.ok) {
         const errorText = await res.text();

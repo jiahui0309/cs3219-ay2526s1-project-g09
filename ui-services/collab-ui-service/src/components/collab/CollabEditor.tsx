@@ -35,14 +35,17 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
     try {
       const effectiveSessionId = sessionId ?? initialSessionId ?? null;
       if (effectiveSessionId) {
-        const res = await fetch("http://localhost:5276/api/collab/end", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sessionId: effectiveSessionId,
-            userId: currentUserId,
-          }),
-        });
+        const res = await fetch(
+          "http://localhost:5276/api/v1/collab-service/end",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              sessionId: effectiveSessionId,
+              userId: currentUserId,
+            }),
+          },
+        );
 
         if (!res.ok) {
           const errorText = await res.text();
