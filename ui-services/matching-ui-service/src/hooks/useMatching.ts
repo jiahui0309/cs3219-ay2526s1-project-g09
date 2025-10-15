@@ -16,6 +16,7 @@ import {
 } from "@/api/matchingService";
 import {
   startCollabSession,
+  connectToSession,
   waitForActiveSession,
   type CollabSession,
 } from "@/api/collabService";
@@ -78,27 +79,32 @@ export function useMatching({ username, onNavigate }: UseMatchingProps) {
         const isPrimaryRequester = participants[0] === username;
         const questionId = "placeholder-questionId";
 
-        let createdSession: CollabSession | null = null;
+        let sessionRecord: CollabSession | null = null;
 
         try {
           if (isPrimaryRequester) {
-            createdSession = await startCollabSession({
+            sessionRecord = await startCollabSession({
               questionId,
               users: participants,
             });
           } else {
-            createdSession = await waitForActiveSession(participants);
+            sessionRecord = await waitForActiveSession(username);
           }
 
-          if (!createdSession) {
+          if (!sessionRecord) {
             throw new Error("No active session created");
           }
+
+          const connectedSession = await connectToSession(
+            username,
+            sessionRecord.sessionId,
+          );
 
           // navigate to collab page
           if (onNavigate) {
             const params = new URLSearchParams();
-            params.set("sessionId", createdSession.sessionId);
-            params.set("questionId", createdSession.questionId);
+            params.set("sessionId", connectedSession.sessionId);
+            params.set("questionId", connectedSession.questionId);
             participants.forEach((userId) => params.append("user", userId));
             onNavigate(`/collab?${params.toString()}`);
           }

@@ -4,6 +4,13 @@ import io from "socket.io-client";
 
 const socket = io("http://localhost:5276");
 const HEARTBEAT_INTERVAL_MS = 30_000;
+const DEFAULT_LANGUAGE = "java";
+const rawCollabApiBase =
+  import.meta.env.VITE_COLLAB_SERVICE_API_LINK ??
+  "http://localhost:5276/api/v1/collab-service/";
+const collabApiBase = rawCollabApiBase.endsWith("/")
+  ? rawCollabApiBase
+  : `${rawCollabApiBase}/`;
 
 interface CollabEditorProps {
   questionId?: string;
@@ -35,14 +42,16 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
     try {
       const effectiveSessionId = sessionId ?? initialSessionId ?? null;
       if (effectiveSessionId) {
+        const targetUser = currentUserId ?? "unknown-user";
         const res = await fetch(
-          "http://localhost:5276/api/v1/collab-service/end",
+          `${collabApiBase}disconnect/${encodeURIComponent(targetUser)}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               sessionId: effectiveSessionId,
               userId: currentUserId,
+              force: !currentUserId,
             }),
           },
         );
@@ -81,14 +90,44 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       return;
     }
 
-    setSessionId(initialSessionId);
-    setSessionEnded(false);
-    setSessionEndedMessage(null);
-    setParticipantPrompt(null);
-    socket.emit("joinRoom", {
-      sessionId: initialSessionId,
-      userId: currentUserId,
-    });
+    let cancelled = false;
+
+    const connectAndJoin = async () => {
+      setSessionId(initialSessionId);
+      setSessionEnded(false);
+      setSessionEndedMessage(null);
+      setParticipantPrompt(null);
+
+      if (currentUserId) {
+        try {
+          await fetch(
+            `${collabApiBase}connect/${encodeURIComponent(currentUserId)}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ sessionId: initialSessionId }),
+            },
+          );
+        } catch (error) {
+          console.error("Failed to connect session participant", error);
+        }
+      }
+
+      if (cancelled) {
+        return;
+      }
+
+      socket.emit("joinRoom", {
+        sessionId: initialSessionId,
+        userId: currentUserId,
+      });
+    };
+
+    void connectAndJoin();
+
+    return () => {
+      cancelled = true;
+    };
   }, [currentUserId, initialSessionId]);
 
   useEffect(() => {
@@ -186,7 +225,11 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined && sessionId && !sessionEnded) {
       setCode(value);
-      socket.emit("codeUpdate", { sessionId, newCode: value });
+      socket.emit("codeUpdate", {
+        sessionId,
+        newCode: value,
+        language: DEFAULT_LANGUAGE,
+      });
     }
   };
 
@@ -194,7 +237,7 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
     <div className="relative h-full">
       <Editor
         height="100%"
-        defaultLanguage="java"
+        defaultLanguage={DEFAULT_LANGUAGE}
         value={code}
         theme="vs-dark"
         onChange={handleEditorChange}

@@ -7,7 +7,7 @@ export interface StartSessionPayload {
 export interface CollabSession {
   sessionId: string;
   questionId: string;
-  users: string[];
+  users?: string[];
   active: boolean;
   createdAt?: string;
   endedAt?: string;
@@ -23,6 +23,13 @@ interface StartSessionResponse {
 interface ActiveSessionResponse {
   success?: boolean;
   session?: CollabSession;
+  error?: string;
+}
+
+interface ConnectSessionResponse {
+  success?: boolean;
+  session?: CollabSession;
+  addedUser?: boolean;
   error?: string;
 }
 
@@ -58,14 +65,16 @@ export async function startCollabSession(
   return data.session;
 }
 
-export async function findActiveSession(
-  users: string[],
+export async function getActiveSessionForUser(
+  userId: string,
 ): Promise<CollabSession | null> {
-  const response = await fetch(`${collabApiBase}active`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ users }),
-  });
+  const response = await fetch(
+    `${collabApiBase}sessions/${encodeURIComponent(userId)}`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    },
+  );
 
   if (response.status === 404) {
     return null;
@@ -84,6 +93,37 @@ export async function findActiveSession(
   return data.session ?? null;
 }
 
+export async function connectToSession(
+  userId: string,
+  sessionId: string,
+): Promise<CollabSession> {
+  const response = await fetch(
+    `${collabApiBase}connect/${encodeURIComponent(userId)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId }),
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = (await response.json().catch(() => ({
+      error: `HTTP ${response.status}`,
+    }))) as ConnectSessionResponse;
+    throw new Error(
+      errorBody.error ??
+        `Failed to connect to session ${sessionId} (${response.status})`,
+    );
+  }
+
+  const data = (await response.json()) as ConnectSessionResponse;
+  if (!data.session) {
+    throw new Error("Connect session response missing session data");
+  }
+
+  return data.session;
+}
+
 function delay(ms: number) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
@@ -91,14 +131,14 @@ function delay(ms: number) {
 }
 
 export async function waitForActiveSession(
-  users: string[],
+  userId: string,
   { attempts = 10, intervalMs = 750 } = {},
 ): Promise<CollabSession> {
   let lastError: unknown = null;
 
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
-      const session = await findActiveSession(users);
+      const session = await getActiveSessionForUser(userId);
       if (session) {
         return session;
       }
