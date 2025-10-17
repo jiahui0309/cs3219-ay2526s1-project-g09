@@ -13,9 +13,9 @@ export default defineConfig({
       name: "matching-ui-service",
       filename: "remoteEntry.js",
       exposes: {
-        "./MatchingUi": "./src/pages/MatchingUi",
+        "./MatchingUi": "./src/exports/MatchingUi",
       },
-      shared: ["react", "react-dom"],
+      shared: ["react", "react-dom", "react-router-dom"],
     }),
   ],
   resolve: {

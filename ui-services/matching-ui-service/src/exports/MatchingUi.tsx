@@ -1,4 +1,4 @@
-import QuestionPreferences from "@/components/question-preference/QuestionPreferences";
+import QuestionPreferences from "@/components/QuestionPreference";
 import MatchFound from "@/components/MatchFound";
 import MatchSearch from "@/components/MatchSearch";
 import StartMatching from "@/components/StartMatching";
@@ -15,10 +15,9 @@ interface User {
 
 interface MatchingPageProps {
   user: User | null;
-  onNavigate?: (path: string) => void;
 }
 
-const MatchingPage: React.FC<MatchingPageProps> = ({ user, onNavigate }) => {
+const MatchingPage: React.FC<MatchingPageProps> = ({ user }) => {
   const {
     currentView,
     matchData,
@@ -37,7 +36,7 @@ const MatchingPage: React.FC<MatchingPageProps> = ({ user, onNavigate }) => {
     handleMatchNotFound,
     handleDismissRejected,
     getFirstTopicDifficultyAndTime,
-  } = useMatching({ username: user?.username ?? "", onNavigate });
+  } = useMatching({ username: user?.username ?? "" });
 
   if (!user) {
     return (

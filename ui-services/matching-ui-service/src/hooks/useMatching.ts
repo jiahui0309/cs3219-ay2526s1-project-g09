@@ -14,15 +14,15 @@ import {
   requestMatch,
   getTimeoutConfig,
 } from "@/api/matchingService";
+import { useNavigate } from "react-router-dom";
 
 type PageView = "initial" | "preferences" | "matching" | "matchFound";
 
 interface UseMatchingProps {
   username: string;
-  onNavigate?: (path: string) => void;
 }
 
-export function useMatching({ username, onNavigate }: UseMatchingProps) {
+export function useMatching({ username }: UseMatchingProps) {
   const [currentView, setCurrentView] = useState<PageView>("initial");
   const [matchData, setMatchData] = useState<MatchingResponse | null>(null);
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
@@ -34,6 +34,7 @@ export function useMatching({ username, onNavigate }: UseMatchingProps) {
     matchRequestTimeout: 30000,
     matchAcceptanceTimeout: 30000,
   });
+  const navigate = useNavigate();
 
   // Fetch timeout config on mount
   useEffect(() => {
@@ -69,9 +70,7 @@ export function useMatching({ username, onNavigate }: UseMatchingProps) {
 
       if (response.status.toUpperCase() === "SUCCESS") {
         // Both users accepted - navigate to collab
-        if (onNavigate) {
-          onNavigate("/collab");
-        }
+        navigate("/collab");
       } else if (response.status.toUpperCase() === "REJECTED") {
         setShowRejectedDialog(true);
       }
