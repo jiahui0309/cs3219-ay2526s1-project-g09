@@ -227,6 +227,7 @@ const leetcodeRoutes: FastifyPluginCallback = (app: FastifyInstance) => {
   app.get("/questions", async (req, reply) => {
     // Define schema for validation
     const QuerySchema = z.object({
+      title: z.string().optional(),
       category: z.string().optional(),
       difficulty: z.enum(["Easy", "Medium", "Hard"]).optional(),
       minTime: z.coerce.number().int().min(1).optional(),
@@ -246,12 +247,23 @@ const leetcodeRoutes: FastifyPluginCallback = (app: FastifyInstance) => {
         .send({ error: "Invalid query params", details: parsed.error.issues });
     }
 
-    const { category, difficulty, minTime, maxTime, size, page, sortBy } =
-      parsed.data;
+    const {
+      title,
+      category,
+      difficulty,
+      minTime,
+      maxTime,
+      size,
+      page,
+      sortBy,
+    } = parsed.data;
 
     // Build MongoDB query
     const query: QuestionQuery = {};
 
+    if (title) {
+      query.title = { $regex: title, $options: "i" };
+    }
     if (category) query.categoryTitle = category;
     if (difficulty) query.difficulty = difficulty;
     if (minTime || maxTime) {

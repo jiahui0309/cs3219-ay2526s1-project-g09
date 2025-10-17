@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import type { Question } from "@/types/Question";
 import { getQuestionById } from "@/api/questionService";
-import HintDialog from "./HintDialog";
+import HintDialog from "../components/HintDialog";
 import AnswerButton from "./AnswerButton";
 
 interface QuestionDisplayProps {
@@ -21,14 +21,13 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({ questionId }) => {
       try {
         const data = await getQuestionById(questionId);
 
-        // Map backend response to frontend Question type
         setQuestion({
           id: data.questionId,
           title: data.title,
           body: data.content,
           topics: [data.categoryTitle ?? "Uncategorized"],
           hints: data.hints ?? [],
-          answer: data.answer ?? "", // gracefully handle missing answer
+          answer: data.answer ?? "",
           difficulty: data.difficulty,
           timeLimit: data.timeLimit,
         });

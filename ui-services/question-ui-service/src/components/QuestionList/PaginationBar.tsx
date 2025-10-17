@@ -29,6 +29,7 @@ const PaginationBar: React.FC<PaginationBarProps> = ({
       </span>
       <Button
         onClick={onPrevious}
+        className="text-white"
         disabled={currentPage === 1 || loading}
         variant="link"
       >
@@ -36,6 +37,7 @@ const PaginationBar: React.FC<PaginationBarProps> = ({
       </Button>
       <Button
         onClick={onNext}
+        className="text-white"
         disabled={currentPage === totalPages || loading}
         variant="link"
       >

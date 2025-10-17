@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { getQuestionById, deleteQuestion } from "@/api/questionService";
 import type { Question } from "@/types/Question";
-import QuestionDisplay from "@/components/QuestionDisplay";
+import QuestionDisplay from "@/exports/QuestionDisplayWindow";
 import {
   Dialog,
   DialogContent,
@@ -10,14 +10,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { useNavigate } from "react-router-dom";
 
 interface QuestionDetailsPageProps {
-  onNavigate: (path: string) => void;
   questionId: string;
 }
 
 const QuestionDetailsPage: React.FC<QuestionDetailsPageProps> = ({
-  onNavigate,
   questionId,
 }) => {
   const [question, setQuestion] = useState<Question | null>(null);
@@ -29,6 +28,8 @@ const QuestionDetailsPage: React.FC<QuestionDetailsPageProps> = ({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteSuccess, setDeleteSuccess] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!questionId) return;
@@ -107,7 +108,7 @@ const QuestionDetailsPage: React.FC<QuestionDetailsPageProps> = ({
     setDeleteDialogOpen(false);
     setDeleteError(null);
     if (deleteSuccess) {
-      onNavigate("/questions");
+      navigate("/questions");
     }
   };
 
@@ -162,7 +163,7 @@ const QuestionDetailsPage: React.FC<QuestionDetailsPageProps> = ({
 
         <div className="flex gap-2">
           <Button
-            onClick={() => onNavigate(`/questions/${question.id}/edit`)}
+            onClick={() => navigate(`/questions/${question.id}/edit`)}
             variant="outline"
             className="flex-1 bg-blue-600 hover:bg-blue-500 text-white"
           >
@@ -176,7 +177,7 @@ const QuestionDetailsPage: React.FC<QuestionDetailsPageProps> = ({
             Delete
           </Button>
           <Button
-            onClick={() => onNavigate("/questions")}
+            onClick={() => navigate("/questions")}
             variant="outline"
             className="mb-4 w-24 bg-gray-700 text-white border-gray-600 hover:bg-gray-600"
           >

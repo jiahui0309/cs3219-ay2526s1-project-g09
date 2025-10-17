@@ -1,6 +1,38 @@
 import type { QuestionPreview } from "@/types/QuestionPreview";
 
-interface GetQuestionsParams {
+const API_URI = import.meta.env.VITE_QUESTION_SERVICE_API_LINK;
+const ADMIN_TOKEN = import.meta.env.VITE_QUESTION_SERVICE_ADMIN_TOKEN;
+
+/** Generic type-safe fetch helper */
+async function apiFetch<T>(
+  endpoint: string,
+  options?: RequestInit,
+): Promise<T> {
+  const res = await fetch(`${API_URI}${endpoint}`, options);
+
+  let json: unknown;
+  try {
+    json = await res.json();
+  } catch {
+    json = {};
+  }
+
+  if (!res.ok) {
+    const errMsg =
+      (json as { error?: string; details?: { message: string }[] })?.error ||
+      (json as { details?: { message: string }[] })?.details
+        ?.map((d) => d.message)
+        .join(", ") ||
+      "API request failed";
+    throw new Error(errMsg);
+  }
+
+  return json as T;
+}
+
+/** --- DTOs --- */
+export interface GetQuestionsParams {
+  title?: string;
   category?: string;
   difficulty?: string;
   minTime?: number;
@@ -9,82 +41,9 @@ interface GetQuestionsParams {
   page?: number;
 }
 
-interface GetQuestionsResponse {
+export interface GetQuestionsResponse {
   questions: QuestionPreview[];
   totalCount: number;
-}
-
-export async function getQuestions(
-  params: GetQuestionsParams,
-): Promise<GetQuestionsResponse> {
-  const apiUri = import.meta.env.VITE_QUESTION_SERVICE_API_LINK;
-  const query = new URLSearchParams();
-
-  if (params.category) query.append("category", params.category);
-  if (params.difficulty) query.append("difficulty", params.difficulty);
-  if (params.minTime !== undefined)
-    query.append("minTime", params.minTime.toString());
-  if (params.maxTime !== undefined)
-    query.append("maxTime", params.maxTime.toString());
-  if (params.size) query.append("size", params.size.toString());
-  if (params.page) query.append("page", params.page.toString());
-
-  const uriLink = `${apiUri}/questions?${query.toString()}`;
-
-  const response = await fetch(uriLink, { method: "GET" });
-  if (!response.ok) throw new Error("Failed to fetch questions");
-
-  const data: { questions?: QuestionPreview[]; total?: number } =
-    await response.json();
-
-  return {
-    questions: data.questions ?? [],
-    totalCount: data.total ?? 0,
-  };
-}
-
-export async function updateQuestion(
-  id: string,
-  payload: Record<string, unknown>,
-): Promise<{ ok: boolean; message?: string }> {
-  const adminToken = import.meta.env.VITE_QUESTION_SERVICE_ADMIN_TOKEN;
-  const apiUri = import.meta.env.VITE_QUESTION_SERVICE_API_LINK;
-  const res = await fetch(`${apiUri}/questions/${id}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      "x-admin-token": adminToken,
-    },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error("Failed to update question");
-  return res.json();
-}
-
-export interface GetCategoriesResponse {
-  categories: string[];
-}
-
-export async function getCategories(): Promise<GetCategoriesResponse> {
-  const apiUri = import.meta.env.VITE_QUESTION_SERVICE_API_LINK;
-  const uriLink = `${apiUri}/questions/categories`;
-
-  const response = await fetch(uriLink, { method: "GET" });
-  if (!response.ok) throw new Error("Failed to fetch categories");
-
-  const data: { categories?: string[] } = await response.json();
-
-  return {
-    categories: data.categories ?? [],
-  };
-}
-
-export async function getDifficulties(): Promise<{ difficulties: string[] }> {
-  const apiUri = import.meta.env.VITE_QUESTION_SERVICE_API_LINK;
-  const response = await fetch(`${apiUri}/questions/difficulties`);
-  if (!response.ok) throw new Error("Failed to fetch difficulties");
-  const data: { difficulties?: string[] } = await response.json();
-  return { difficulties: data.difficulties ?? [] };
 }
 
 export interface QuestionDetails {
@@ -106,20 +65,6 @@ export interface QuestionDetails {
   answer?: string;
 }
 
-/**
- * Fetch question details by ID
- */
-export async function getQuestionById(id: string): Promise<QuestionDetails> {
-  const apiUri = import.meta.env.VITE_QUESTION_SERVICE_API_LINK;
-  const response = await fetch(`${apiUri}/questions/${id}`);
-
-  if (response.status === 404) throw new Error("Question not found");
-  if (!response.ok) throw new Error("Failed to fetch question details");
-
-  const data: QuestionDetails = await response.json();
-  return data;
-}
-
 export interface CreateQuestionPayload {
   title: string;
   categoryTitle: string;
@@ -136,47 +81,6 @@ export interface CreateQuestionResponse {
   message: string;
 }
 
-/**
- * Create a new question
- */
-export async function createQuestion(
-  payload: CreateQuestionPayload,
-): Promise<CreateQuestionResponse> {
-  const apiUri = import.meta.env.VITE_QUESTION_SERVICE_API_LINK;
-  const adminToken = import.meta.env.VITE_QUESTION_SERVICE_ADMIN_TOKEN;
-  const response = await fetch(`${apiUri}/add-question`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-admin-token": adminToken,
-    },
-    body: JSON.stringify(payload),
-  });
-
-  const json: {
-    ok?: boolean;
-    message?: string;
-    id?: string;
-    questionId?: string;
-    details?: { message: string }[];
-    error?: string;
-  } = await response.json();
-
-  if (!response.ok) {
-    const errorMsg = json.details
-      ? `Validation errors: ${json.details.map((d) => d.message).join(", ")}`
-      : json.error || "Failed to save question";
-    throw new Error(errorMsg);
-  }
-
-  return {
-    ok: json.ok ?? false,
-    message: json.message ?? "Question created",
-    id: json.id,
-    questionId: json.questionId ?? "",
-  };
-}
-
 export interface DeleteQuestionResponse {
   ok: boolean;
   message: string;
@@ -184,39 +88,77 @@ export interface DeleteQuestionResponse {
   title: string;
 }
 
-/**
- * Delete a question by ID
- */
+export interface GetCategoriesResponse {
+  categories: string[];
+}
+
+export interface GetDifficultiesResponse {
+  difficulties: string[];
+}
+
+/** --- API Functions --- */
+export async function getQuestions(
+  params: GetQuestionsParams,
+): Promise<GetQuestionsResponse> {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") query.append(key, String(value));
+  });
+
+  const raw = await apiFetch<{ questions?: QuestionPreview[]; total?: number }>(
+    `/questions?${query.toString()}`,
+  );
+
+  return {
+    questions: raw.questions ?? [],
+    totalCount: raw.total ?? 0,
+  };
+}
+
+export async function getQuestionById(id: string): Promise<QuestionDetails> {
+  return apiFetch<QuestionDetails>(`/questions/${id}`);
+}
+
+export async function createQuestion(
+  payload: CreateQuestionPayload,
+): Promise<CreateQuestionResponse> {
+  return apiFetch<CreateQuestionResponse>("/add-question", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-admin-token": ADMIN_TOKEN,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateQuestion(
+  id: string,
+  payload: Record<string, unknown>,
+): Promise<{ ok: boolean; message?: string }> {
+  return apiFetch<{ ok: boolean; message?: string }>(`/questions/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "x-admin-token": ADMIN_TOKEN,
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function deleteQuestion(
   id: string,
 ): Promise<DeleteQuestionResponse> {
-  const apiUri = import.meta.env.VITE_QUESTION_SERVICE_API_LINK;
-  const adminToken = import.meta.env.VITE_QUESTION_SERVICE_ADMIN_TOKEN;
-
-  const response = await fetch(`${apiUri}/questions/${id}`, {
+  return apiFetch<DeleteQuestionResponse>(`/questions/${id}`, {
     method: "DELETE",
-    headers: {
-      "x-admin-token": adminToken,
-    },
+    headers: { "x-admin-token": ADMIN_TOKEN },
   });
+}
 
-  const json: {
-    ok?: boolean;
-    message?: string;
-    deletedId?: string;
-    title?: string;
-    error?: string;
-  } = await response.json();
+export async function getCategories(): Promise<GetCategoriesResponse> {
+  return apiFetch<GetCategoriesResponse>("/questions/categories");
+}
 
-  if (!response.ok) {
-    const errorMsg = json.error || "Failed to delete question";
-    throw new Error(errorMsg);
-  }
-
-  return {
-    ok: json.ok ?? false,
-    message: json.message ?? "Question deleted successfully",
-    deletedId: json.deletedId ?? id,
-    title: json.title ?? "",
-  };
+export async function getDifficulties(): Promise<GetDifficultiesResponse> {
+  return apiFetch<GetDifficultiesResponse>("/questions/difficulties");
 }

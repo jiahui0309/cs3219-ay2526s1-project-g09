@@ -9,19 +9,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import type { QuestionFormValues } from "@/types/QuestionSchemas";
+import type { QuestionForm } from "@/components/QuestionForm/QuestionSchemas";
+import { useNavigate } from "react-router-dom";
 
 interface QuestionEditPageProps {
-  onNavigate: (path: string) => void;
   questionId: string;
 }
 
-const QuestionEditPage: React.FC<QuestionEditPageProps> = ({
-  onNavigate,
-  questionId,
-}) => {
+const QuestionEditPage: React.FC<QuestionEditPageProps> = ({ questionId }) => {
   const [loading, setLoading] = useState(true);
-  const [initialValues, setInitialValues] = useState<QuestionFormValues>({
+  const [initialValues, setInitialValues] = useState<QuestionForm>({
     title: "",
     categoryTitle: "",
     difficulty: "Easy",
@@ -30,10 +27,11 @@ const QuestionEditPage: React.FC<QuestionEditPageProps> = ({
     hints: [""],
   });
 
-  // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMessage, setDialogMessage] = useState("");
-  const [navigateAfterClose, setnavigateAfterClose] = useState(false);
+  const [navigateAfterClose, setNavigateAfterClose] = useState(false);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const loadQuestion = async () => {
@@ -67,23 +65,19 @@ const QuestionEditPage: React.FC<QuestionEditPageProps> = ({
     );
   }
 
-  const handleSubmit = async (
-    data: Omit<QuestionFormValues, "hints">,
-    hints: string[],
-  ) => {
+  const handleSubmit = async (data: QuestionForm) => {
     try {
-      const payload = { ...data, hints };
-      const result = await updateQuestion(questionId, payload);
-      setDialogMessage(result.message || "Question updated successfully");
-      setnavigateAfterClose(true);
+      const result = await updateQuestion(questionId, data);
+      setDialogMessage(result.message ?? "Question updated successfully");
+      setNavigateAfterClose(true);
       setDialogOpen(true);
     } catch (err) {
-      const error =
+      const message =
         err instanceof Error
           ? err.message
           : "An unexpected error occurred while updating the question";
-      setDialogMessage(error);
-      setnavigateAfterClose(false);
+      setDialogMessage(message);
+      setNavigateAfterClose(false);
       setDialogOpen(true);
     }
   };
@@ -94,7 +88,7 @@ const QuestionEditPage: React.FC<QuestionEditPageProps> = ({
         mode="edit"
         initialValues={initialValues}
         onSubmit={handleSubmit}
-        onBack={() => onNavigate(`/questions/${questionId}`)}
+        onBack={() => navigate(`/questions/${questionId}`)}
       />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -108,7 +102,7 @@ const QuestionEditPage: React.FC<QuestionEditPageProps> = ({
               onClick={() => {
                 setDialogOpen(false);
                 if (navigateAfterClose) {
-                  onNavigate(`/questions/${questionId}`);
+                  navigate(`/questions/${questionId}`);
                 }
               }}
             >

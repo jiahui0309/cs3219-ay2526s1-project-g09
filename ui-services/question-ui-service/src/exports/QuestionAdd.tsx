@@ -9,30 +9,28 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import type { QuestionForm } from "@/types/QuestionSchemas";
+import type { QuestionForm } from "@/components/QuestionForm/QuestionSchemas";
+import { useNavigate } from "react-router-dom";
 
-interface QuestionAddPageProps {
-  onNavigate: (path: string) => void;
-}
-
-const QuestionAddPage: React.FC<QuestionAddPageProps> = ({ onNavigate }) => {
+const QuestionAddPage: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMessage, setDialogMessage] = useState("");
-  const [navigateAfterClose, setNavigateAfterClose] = useState<string | null>(
-    null,
-  );
+  const [navigateAfterClose, setNavigateAfterClose] = useState<string>();
+  const navigate = useNavigate();
 
-  const handleSubmit = async (data: QuestionForm, hints: string[]) => {
+  const handleSubmit = async (data: QuestionForm) => {
     try {
-      const payload = { ...data, hints };
+      const payload = data;
       const result = await createQuestion(payload);
 
       if (result.ok) {
-        setDialogMessage(result.message || "Question created successfully");
-        setNavigateAfterClose(`/questions/${result.id}`);
+        setDialogMessage(result.message ?? "Question created successfully");
+        setNavigateAfterClose(
+          result.id ? `/questions/${result.id}` : undefined,
+        );
       } else {
-        setDialogMessage(result.message || "Failed to create question");
-        setNavigateAfterClose(null);
+        setDialogMessage(result.message ?? "Failed to create question");
+        setNavigateAfterClose(undefined);
       }
 
       setDialogOpen(true);
@@ -40,7 +38,7 @@ const QuestionAddPage: React.FC<QuestionAddPageProps> = ({ onNavigate }) => {
       const message =
         err instanceof Error ? err.message : "Failed to create question";
       setDialogMessage(message);
-      setNavigateAfterClose(null);
+      setNavigateAfterClose(undefined);
       setDialogOpen(true);
     }
   };
@@ -50,7 +48,7 @@ const QuestionAddPage: React.FC<QuestionAddPageProps> = ({ onNavigate }) => {
       <QuestionFormUi
         mode="add"
         onSubmit={handleSubmit}
-        onBack={() => onNavigate("/questions")}
+        onBack={() => navigate("/questions")}
       />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -63,9 +61,7 @@ const QuestionAddPage: React.FC<QuestionAddPageProps> = ({ onNavigate }) => {
             <Button
               onClick={() => {
                 setDialogOpen(false);
-                if (navigateAfterClose) {
-                  onNavigate(navigateAfterClose);
-                }
+                if (navigateAfterClose) navigate(navigateAfterClose);
               }}
             >
               OK
