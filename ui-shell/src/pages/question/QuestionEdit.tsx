@@ -1,18 +1,22 @@
 import React from "react";
 import Layout from "@components/layout/BlueBgLayout";
-import { useNavigate, useParams } from "react-router-dom";
-import QuestionEdit from "questionUiService/QuestionEdit";
-import NavHeader from "@/components/common/NavHeader";
+import { useParams } from "react-router-dom";
+import NavHeader from "@components/common/NavHeader";
+import { RemoteWrapper } from "@/components/mfe/RemoteWrapper";
 
 const QuestionEditPageShell: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
 
   if (!id) return <p className="text-gray-400">No question selected.</p>;
 
   return (
     <Layout navHeader={<NavHeader />}>
-      <QuestionEdit questionId={id} onNavigate={navigate} />
+      <RemoteWrapper
+        remote={() => import("questionUiService/QuestionEdit")}
+        remoteProps={{ questionId: id }}
+        loadingMessage="Loading Question Edit..."
+        errorMessage="Question Edit service unavailable"
+      />
     </Layout>
   );
 };

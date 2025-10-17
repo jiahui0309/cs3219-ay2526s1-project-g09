@@ -1,17 +1,16 @@
 import React from "react";
 import Layout from "@components/layout/BlueBgLayout";
-import { useNavigate } from "react-router-dom";
-import QuestionAdd from "questionUiService/QuestionAdd";
-import NavHeader from "@/components/common/NavHeader";
+import NavHeader from "@components/common/NavHeader";
+import { RemoteWrapper } from "@/components/mfe/RemoteWrapper";
 
-const QuestionAddPageShell: React.FC = () => {
-  const navigate = useNavigate();
-
-  return (
-    <Layout navHeader={<NavHeader />}>
-      <QuestionAdd onNavigate={navigate} />
-    </Layout>
-  );
-};
+const QuestionAddPageShell: React.FC = () => (
+  <Layout navHeader={<NavHeader />}>
+    <RemoteWrapper
+      remote={() => import("questionUiService/QuestionAdd")}
+      loadingMessage="Loading Question Add..."
+      errorMessage="Question Add service unavailable"
+    />
+  </Layout>
+);
 
 export default QuestionAddPageShell;

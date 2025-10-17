@@ -39,7 +39,8 @@ export default function App() {
       .then((res) => setUser(res.data))
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
-  }, []);
+  }, [setUser, setLoading]);
+
   return (
     <Routes>
       {/* Public access */}

@@ -2,8 +2,8 @@ import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import peerPrepIconWhite from "@assets/icon_white.svg";
 import { cn } from "@/lib/utils";
-import LogoutButton from "userUiService/LogoutButton";
 import { useAuth } from "@/data/UserStore";
+import { RemoteWrapper } from "../mfe/RemoteWrapper";
 
 const NavHeader: React.FC = () => {
   const location = useLocation();
@@ -52,13 +52,18 @@ const NavHeader: React.FC = () => {
           )}
         </div>
 
-        <LogoutButton
-          onLogOutSuccess={() => {
-            setIsLoggingOut(true);
-            setUser(null);
-            navigate("/", { state: { loggedOut: true } });
-            setTimeout(() => setIsLoggingOut(false), 500);
+        <RemoteWrapper
+          remote={() => import("userUiService/LogoutButton")}
+          remoteProps={{
+            onLogOutSuccess: () => {
+              setIsLoggingOut(true);
+              setUser(null);
+              navigate("/", { state: { loggedOut: true } });
+              setTimeout(() => setIsLoggingOut(false), 500);
+            },
           }}
+          loadingMessage="Loading logout button..."
+          errorMessage="Logout service unavailable"
         />
       </div>
     </nav>

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import AuthLayout from "@components/auth/AuthLayout";
-import OtpForm from "userUiService/OtpForm";
+import { RemoteWrapper } from "@/components/mfe/RemoteWrapper";
 import type { User } from "@/types/User";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/data/UserStore";
@@ -23,9 +23,14 @@ const OtpPage: React.FC = () => {
 
   return (
     <AuthLayout>
-      <OtpForm
-        user={user}
-        onOTPSuccess={(verifiedUser: User) => handleOTPSuccess(verifiedUser)}
+      <RemoteWrapper
+        remote={() => import("userUiService/OtpForm")}
+        remoteProps={{
+          user,
+          onOTPSuccess: handleOTPSuccess,
+        }}
+        loadingMessage="Loading OTP form..."
+        errorMessage="OTP service unavailable"
       />
     </AuthLayout>
   );
