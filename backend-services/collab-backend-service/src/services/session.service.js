@@ -285,28 +285,6 @@ class SessionService {
     };
   }
 
-  static async saveSnapshot({ sessionId, code, language, userId }) {
-    const sanitizedSessionId = this.validateSessionId(sessionId);
-
-    const session = await Session.findOne({
-      sessionId: sanitizedSessionId,
-      active: true,
-    });
-    if (!session) {
-      return null;
-    }
-
-    session.lastSavedAttempt = {
-      code,
-      language,
-      updatedAt: new Date(),
-      updatedBy: userId,
-    };
-
-    await session.save();
-    return this.toResponse(session);
-  }
-
   static async findActiveSessionByUser(userId) {
     const sanitizedUserId = this.sanitizeUserId(userId);
     if (!sanitizedUserId) {

@@ -259,35 +259,6 @@ export const getSession = async (req, res) => {
   }
 };
 
-export const saveSnapshot = async (req, res) => {
-  try {
-    const { sessionId, code, language, userId } = req.body;
-
-    if (!sessionId || typeof sessionId !== "string") {
-      return res.status(400).json({ error: "sessionId is required" });
-    }
-
-    if (typeof code !== "string") {
-      return res.status(400).json({ error: "code must be a string" });
-    }
-
-    const session = await SessionService.saveSnapshot({
-      sessionId,
-      code,
-      language,
-      userId,
-    });
-
-    if (!session) {
-      return res.status(404).json({ error: "Session not found or inactive" });
-    }
-
-    res.json({ success: true, session });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
 export const getActiveSessionForUser = async (req, res) => {
   try {
     const { userId } = req.params;

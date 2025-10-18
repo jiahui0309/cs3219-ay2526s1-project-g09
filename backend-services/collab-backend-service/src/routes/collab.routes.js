@@ -3,7 +3,6 @@ import {
   startSession,
   disconnectSession,
   getSession,
-  saveSnapshot,
   getActiveSessionForUser,
   connectSession,
 } from "../controllers/collab.controller.js";

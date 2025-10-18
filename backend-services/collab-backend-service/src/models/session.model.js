@@ -1,15 +1,5 @@
 import mongoose from "mongoose";
 
-const LastSavedAttemptSchema = new mongoose.Schema(
-  {
-    code: { type: String, default: "" },
-    language: { type: String },
-    updatedAt: { type: Date },
-    updatedBy: { type: String },
-  },
-  { _id: false },
-);
-
 const ParticipantSchema = new mongoose.Schema(
   {
     userId: { type: String, required: true },
@@ -43,7 +33,6 @@ const SessionSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   endedAt: { type: Date },
   timeTaken: { type: Number },
-  lastSavedAttempt: { type: LastSavedAttemptSchema },
   question: { type: QuestionInfoSchema },
 });
 
