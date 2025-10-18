@@ -115,6 +115,7 @@ export async function seedLeetCodeBatch() {
           hints: q.hints ?? [],
           exampleTestcases: q.exampleTestcases ?? null,
           createdAt: new Date(),
+          answer: "",
         },
       },
       upsert: true,

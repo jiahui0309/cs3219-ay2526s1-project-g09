@@ -121,7 +121,8 @@ curl.exe --request POST -H "X-Admin-Token: <ADMIN_TOKEN>" --url "http://localhos
   hints: [String],
   sampleTestCase: String,
   createdAt: Date,
-  updatedAt: Date
+  updatedAt: Date,
+  answer: String
 }
 ```
 
