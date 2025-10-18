@@ -72,6 +72,17 @@ export interface CreateQuestionPayload {
   timeLimit: number;
   content: string;
   hints: string[];
+  answer?: string;
+}
+
+export interface UpdateQuestionPayload {
+  title?: string;
+  categoryTitle?: string;
+  difficulty?: "Easy" | "Medium" | "Hard";
+  timeLimit?: number;
+  content?: string;
+  hints?: string[];
+  answer?: string;
 }
 
 export interface CreateQuestionResponse {
@@ -134,7 +145,7 @@ export async function createQuestion(
 
 export async function updateQuestion(
   id: string,
-  payload: Record<string, unknown>,
+  payload: UpdateQuestionPayload,
 ): Promise<{ ok: boolean; message?: string }> {
   return apiFetch<{ ok: boolean; message?: string }>(`/questions/${id}`, {
     method: "PUT",

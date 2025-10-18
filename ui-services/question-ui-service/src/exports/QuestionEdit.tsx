@@ -45,6 +45,7 @@ const QuestionEditPage: React.FC<QuestionEditPageProps> = ({ questionId }) => {
           timeLimit: data.timeLimit,
           content: data.content,
           hints: data.hints?.length ? data.hints : [""],
+          answer: data.answer,
         });
       } catch (err) {
         console.error("Failed to load question:", err);
