@@ -50,6 +50,7 @@ const SessionPage: React.FC = () => {
               <RemoteWrapper
                 remote={() => import("collabUiService/WorkingWindow")}
                 remoteName="WorkingWindow"
+                remoteProps={{ user }}
                 loadingMessage="Loading Workspace..."
                 errorMessage="Workspace service unavailable"
               />
