@@ -160,7 +160,16 @@ const QuestionDetailsPage: React.FC<QuestionDetailsPageProps> = ({
             {question.timeLimit} min
           </p>
         </div>
-
+        {/* Answer Section */}
+        {question.answer && (
+          <div className="p-4 bg-gray-800 rounded-lg border border-gray-700 text-gray-200">
+            <h3 className="font-semibold mb-2 text-lg">Answer</h3>
+            <div
+              className="prose max-w-full text-sm max-h-60 overflow-y-auto"
+              dangerouslySetInnerHTML={{ __html: question.answer }}
+            />
+          </div>
+        )}
         <div className="flex gap-2">
           <Button
             onClick={() => navigate(`/questions/${question.id}/edit`)}
