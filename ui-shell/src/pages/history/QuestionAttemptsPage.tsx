@@ -1,20 +1,42 @@
+import React from "react";
 import Layout from "@components/layout/BlueBgLayout";
-import QuestionAttemptTable from "historyUiService/QuestionAttemptTable";
-import QuestionDisplay from "questionUiService/QuestionDisplay";
+import NavHeader from "@components/common/NavHeader";
+import { RemoteWrapper } from "@/components/mfe/RemoteWrapper";
 import { mockQuestions } from "@/data/mock-history-data";
 
 const QuestionAttemptsPage: React.FC = () => {
   return (
-    <Layout>
-      <div className="flex w-full gap-4 p-6">
-        {/* Left Column (QuestionDisplay) */}
-        <div className="flex-1">
-          <QuestionDisplay question={mockQuestions[0]} />
+    <Layout navHeader={<NavHeader />}>
+      <div className="flex h-[85vh] px-4 gap-4">
+        {/* Left Column */}
+        <div className="flex flex-col w-1/3 gap-4">
+          {/* Question Section */}
+          <div className="h-[40vh] overflow-y-auto">
+            <RemoteWrapper
+              remote={() => import("questionUiService/QuestionDisplay")}
+              remoteProps={{ question: mockQuestions[0] }}
+              loadingMessage="Loading Question..."
+              errorMessage="Question Display service unavailable"
+            />
+          </div>
+
+          {/* Notes Section */}
+          <div className="flex flex-1">
+            <RemoteWrapper
+              remote={() => import("historyUiService/NotesWindow")}
+              loadingMessage="Loading Notes..."
+              errorMessage="Notes service unavailable"
+            />
+          </div>
         </div>
 
-        {/* Right Column (QuestionAttemptTable) */}
-        <div className="flex-2">
-          <QuestionAttemptTable />
+        {/* Right Column - Collaboration Window */}
+        <div className="flex flex-1">
+          <RemoteWrapper
+            remote={() => import("collabUiService/WorkingWindow")}
+            loadingMessage="Loading Collaboration Window..."
+            errorMessage="Collaboration service unavailable"
+          />
         </div>
       </div>
     </Layout>

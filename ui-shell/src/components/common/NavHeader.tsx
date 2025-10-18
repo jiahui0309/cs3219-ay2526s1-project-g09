@@ -2,14 +2,14 @@ import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import peerPrepIconWhite from "@assets/icon_white.svg";
 import { cn } from "@/lib/utils";
-import LogoutButton from "userUiService/LogoutButton";
 import { useAuth } from "@/data/UserStore";
+import { RemoteWrapper } from "../mfe/RemoteWrapper";
 
 const NavHeader: React.FC = () => {
   const location = useLocation();
   const currentPath = location.pathname;
   const navigate = useNavigate();
-  const { setUser, setIsLoggingOut } = useAuth();
+  const { user, setUser, setIsLoggingOut } = useAuth();
 
   // Function to apply active/inactive styles
   const getLinkClasses = (path: string) => {
@@ -43,15 +43,27 @@ const NavHeader: React.FC = () => {
           <Link to="/settings" className={getLinkClasses("/settings")}>
             Settings
           </Link>
+
+          {/* Only show for admins */}
+          {user?.isAdmin && (
+            <Link to="/questions" className={getLinkClasses("/questions")}>
+              Questions
+            </Link>
+          )}
         </div>
 
-        <LogoutButton
-          onLogOutSuccess={() => {
-            setIsLoggingOut(true);
-            setUser(null);
-            navigate("/", { state: { loggedOut: true } });
-            setTimeout(() => setIsLoggingOut(false), 500);
+        <RemoteWrapper
+          remote={() => import("userUiService/LogoutButton")}
+          remoteProps={{
+            onLogOutSuccess: () => {
+              setIsLoggingOut(true);
+              setUser(null);
+              navigate("/", { state: { loggedOut: true } });
+              setTimeout(() => setIsLoggingOut(false), 500);
+            },
           }}
+          loadingMessage="Loading logout button..."
+          errorMessage="Logout service unavailable"
         />
       </div>
     </nav>

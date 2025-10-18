@@ -1,5 +1,5 @@
 import AuthLayout from "@components/auth/AuthLayout";
-import ResetPasswordForm from "userUiService/ResetPasswordForm";
+import { RemoteWrapper } from "@/components/mfe/RemoteWrapper";
 import { useNavigate } from "react-router-dom";
 
 const ResetPasswordPage: React.FC = () => {
@@ -7,17 +7,18 @@ const ResetPasswordPage: React.FC = () => {
 
   return (
     <AuthLayout>
-      <ResetPasswordForm
-        onResetSuccess={() => {
-          // After successful password reset, navigate to login
-          navigate("/login");
+      <RemoteWrapper
+        remote={() => import("userUiService/ResetPasswordForm")}
+        remoteProps={{
+          onResetSuccess: () => navigate("/login"),
+          onTokenInvalid: () =>
+            navigate("/forgotPassword", {
+              replace: true,
+              state: { error: "invalid-link" },
+            }),
         }}
-        onTokenInvalid={() =>
-          navigate("/forgotPassword", {
-            replace: true,
-            state: { error: "invalid-link" },
-          })
-        }
+        loadingMessage="Loading reset form..."
+        errorMessage="Reset password service unavailable"
       />
     </AuthLayout>
   );

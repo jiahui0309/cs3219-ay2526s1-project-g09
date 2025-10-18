@@ -11,7 +11,9 @@ import { QUERY_LIST, QUERY_DETAIL } from "./queries.js";
 import type { BasicInformation, QuestionList, Details } from "./types.js";
 import pLimit from "p-limit";
 import { logger } from "../logger.js";
+import { checkQuestionServiceHealth } from "../health.js";
 
+const PAGE_SIZE = 200;
 /**
  * Maximum number of concurrent requests for fetching question details.
  * This can be configured via the LEETCODE_DETAIL_CONCURRENCY environment variable.
@@ -38,49 +40,66 @@ export async function seedLeetCodeBatch() {
   const id = "questions";
   const cursor =
     (await SeedCursor.findById(id)) ??
-    new SeedCursor({ _id: id, nextSkip: 0, pageSize: 200, done: false });
+    new SeedCursor({ _id: id, nextSkip: 0, pageSize: PAGE_SIZE });
+  const { pageSize, nextSkip } = cursor;
 
-  if (cursor.done) {
+  try {
+    await checkQuestionServiceHealth();
+  } catch (err) {
+    cursor.lastRunAt = new Date();
+    await cursor.save();
     return {
-      ok: true,
-      message: "Already completed.",
+      ok: false as const,
+      message: `Aborted: question service not healthy — ${(err as Error).message}`,
       nextSkip: cursor.nextSkip,
-      done: true,
     };
   }
 
-  const { pageSize, nextSkip } = cursor;
+  // Fetch question list
+  let questionList: BasicInformation[] = [];
+  let total = 0;
 
-  const { questionList, total, initial_count } = await fetchNonPaidQuestionList(
-    pageSize,
-    nextSkip,
-  );
+  try {
+    const { questionList: fetchedQuestionList, total: fetchedTotal } =
+      await fetchNonPaidQuestionList(pageSize, nextSkip);
+    questionList = fetchedQuestionList;
+    total = fetchedTotal;
+  } catch (err) {
+    logger.error(
+      `Failed to fetch question list from LeetCode: ${(err as Error).message}`,
+    );
+    cursor.lastRunAt = new Date();
+    await cursor.save();
+    return {
+      ok: false,
+      message: `Failed to fetch question list from LeetCode: ${(err as Error).message}`,
+      nextSkip: cursor.nextSkip,
+    };
+  }
 
-  if (questionList.length === 0) {
-    cursor.done = true;
+  // Check if there are more questions to process
+  if (questionList.length === 0 || nextSkip >= total) {
     cursor.lastRunAt = new Date();
     cursor.total = total ?? cursor.total;
+    cursor.nextSkip = total; // Prevent future refetching of previously fetched items
     await cursor.save();
     return {
       ok: true,
-      message: "No more questions. Marked done.",
-      nextSkip,
-      done: true,
+      message: "No more questions.",
+      nextSkip: cursor.nextSkip,
     };
   }
 
-  const questionInfos: QuestionDetail[] = await fetchNonPaidQuestionInfo(
-    pageSize,
-    nextSkip,
-  );
+  const questionInfos: QuestionDetail[] =
+    await fetchNonPaidQuestionInfo(questionList);
 
   const ops = questionInfos.map((q) => ({
     updateOne: {
       filter: { titleSlug: q.titleSlug },
-
       update: {
-        $set: {
-          globalSlug: `leetcode:${q.titleSlug}`, // unique identifier
+        // Use $setOnInsert for all fields to ensure insert-only behavior; existing entries' application fields are never updated (though MongoDB may update internal metadata fields).
+        $setOnInsert: {
+          globalSlug: `leetcode:${q.titleSlug}`,
           source: "leetcode",
           titleSlug: q.titleSlug,
           title: q.title,
@@ -95,14 +114,9 @@ export async function seedLeetCodeBatch() {
           codeSnippets: q.codeSnippets ?? [],
           hints: q.hints ?? [],
           exampleTestcases: q.exampleTestcases ?? null,
-          updatedAt: new Date(),
-        },
-
-        $setOnInsert: {
           createdAt: new Date(),
         },
       },
-
       upsert: true,
     },
   }));
@@ -110,12 +124,14 @@ export async function seedLeetCodeBatch() {
   const result = await Question.bulkWrite(ops, { ordered: false });
 
   // Advance cursor
-  cursor.nextSkip = nextSkip + pageSize;
+  if (nextSkip + pageSize > total) {
+    // Prevent future refetching of previously fetched items
+    cursor.nextSkip = total;
+  } else {
+    cursor.nextSkip = nextSkip + pageSize;
+  }
   cursor.lastRunAt = new Date();
   cursor.total = total;
-  if (initial_count < pageSize) {
-    cursor.done = true;
-  }
   await cursor.save();
 
   return {
@@ -127,7 +143,6 @@ export async function seedLeetCodeBatch() {
     pageSize,
     nextSkip: cursor.nextSkip,
     total: cursor.total,
-    done: cursor.done,
   };
 }
 
@@ -139,40 +154,25 @@ type QuestionDetail = NonNullable<Details["question"]>;
  * content of paid questions will not be accessible without a premium account.
  * @param limit - The maximum number of questions to fetch.
  * @param skip - The number of questions to skip.
+ * @param questionList - The list of basic question information to fetch details for.
  * @returns An array of non-paid question details.
  */
 export async function fetchNonPaidQuestionInfo(
-  limit: number,
-  skip: number,
+  questionList: BasicInformation[],
 ): Promise<QuestionDetail[]> {
-  const res = await gql<
-    QuestionList,
-    {
-      categorySlug: string;
-      limit: number;
-      skip: number;
-      filters: Record<string, unknown>;
-    }
-  >(QUERY_LIST, { categorySlug: "", limit: limit, skip: skip, filters: {} });
-
-  const questionList = res.problemsetQuestionList;
-  const questions: BasicInformation[] = questionList.questions;
-
   const limitConcurrency = pLimit(DETAIL_CONCURRENCY);
 
-  const tasks = questions
-    .filter((q) => !q.isPaidOnly)
-    .map((q) =>
-      limitConcurrency(async () => {
-        try {
-          const detail = await getQuestionDetail(q.titleSlug);
-          return detail ?? null;
-        } catch {
-          logger.error(`Failed to fetch details for ${q.titleSlug}`);
-          return null;
-        }
-      }),
-    );
+  const tasks = questionList.map((q) =>
+    limitConcurrency(async () => {
+      try {
+        const detail = await getQuestionDetail(q.titleSlug);
+        return detail ?? null;
+      } catch {
+        logger.error(`Failed to fetch details for ${q.titleSlug}`);
+        return null;
+      }
+    }),
+  );
 
   const results = await Promise.all(tasks);
   return results.filter((d): d is QuestionDetail => d !== null);
@@ -189,7 +189,6 @@ export async function fetchNonPaidQuestionList(
 ): Promise<{
   questionList: BasicInformation[];
   total: number;
-  initial_count: number;
 }> {
   const res = await gql<
     QuestionList,
@@ -201,10 +200,13 @@ export async function fetchNonPaidQuestionList(
     }
   >(QUERY_LIST, { categorySlug: "", limit: limit, skip: skip, filters: {} });
 
+  if (!res.problemsetQuestionList) {
+    throw new Error("Failed to fetch question list from LeetCode");
+  }
+
   const { total, questions } = res.problemsetQuestionList;
-  const initial_count = questions.length;
   const questionList = questions.filter((q) => !q.isPaidOnly);
-  return { questionList, total, initial_count };
+  return { questionList, total };
 }
 
 export async function getQuestionDetail(slug: string) {

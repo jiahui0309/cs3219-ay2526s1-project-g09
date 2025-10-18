@@ -20,15 +20,15 @@ import {
   waitForActiveSession,
   type CollabSession,
 } from "@/api/collabService";
+import { useNavigate } from "react-router-dom";
 
 type PageView = "initial" | "preferences" | "matching" | "matchFound";
 
 interface UseMatchingProps {
   username: string;
-  onNavigate?: (path: string) => void;
 }
 
-export function useMatching({ username, onNavigate }: UseMatchingProps) {
+export function useMatching({ username }: UseMatchingProps) {
   const [currentView, setCurrentView] = useState<PageView>("initial");
   const [matchData, setMatchData] = useState<MatchingResponse | null>(null);
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
@@ -40,6 +40,7 @@ export function useMatching({ username, onNavigate }: UseMatchingProps) {
     matchRequestTimeout: 30000,
     matchAcceptanceTimeout: 30000,
   });
+  const navigate = useNavigate();
 
   // Fetch timeout config on mount
   useEffect(() => {
@@ -97,9 +98,7 @@ export function useMatching({ username, onNavigate }: UseMatchingProps) {
 
           await connectToSession(username, sessionRecord.sessionId);
 
-          if (onNavigate) {
-            onNavigate("/collab");
-          }
+          navigate("/collab");
         } catch (sessionError) {
           console.error(
             "Failed to initialise collaboration session",

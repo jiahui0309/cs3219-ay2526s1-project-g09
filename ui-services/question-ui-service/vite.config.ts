@@ -13,13 +13,14 @@ export default defineConfig({
       name: "question-ui-service",
       filename: "remoteEntry.js",
       exposes: {
-        "./QuestionDisplay": "./src/components/QuestionDisplay",
-        "./AnswerButton": "./src/components/AnswerButton",
+        "./AnswerButton": "./src/exports/AnswerButton",
+        "./QuestionDisplay": "./src/exports/QuestionDisplayWindow",
+        "./QuestionList": "./src/exports/QuestionList",
+        "./QuestionDetails": "./src/exports/QuestionDetails",
+        "./QuestionEdit": "./src/exports/QuestionEdit",
+        "./QuestionAdd": "./src/exports/QuestionAdd",
       },
-      remotes: {
-        userUiService: "http://localhost:5177/assets/remoteEntry.js",
-      },
-      shared: ["react", "react-dom"],
+      shared: ["react", "react-dom", "react-router-dom"],
     }),
   ],
   resolve: {

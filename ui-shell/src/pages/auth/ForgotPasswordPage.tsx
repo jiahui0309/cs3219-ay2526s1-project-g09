@@ -1,25 +1,26 @@
 import AuthLayout from "@components/auth/AuthLayout";
-import ForgotPasswordForm from "userUiService/ForgotPasswordForm";
+import { RemoteWrapper } from "@/components/mfe/RemoteWrapper";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const ForgotPasswordPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // read the passed state
   const state = location.state as { error?: string } | null;
   const errorType = state?.error || null;
 
   return (
     <AuthLayout>
-      <ForgotPasswordForm
-        errorType={errorType}
-        onBackToLogin={() => {
-          navigate("/login");
+      <RemoteWrapper
+        remote={() => import("userUiService/ForgotPasswordForm")}
+        remoteProps={{
+          errorType,
+          onBackToLogin: () => navigate("/login"),
+          onClearError: () =>
+            navigate(location.pathname, { replace: true, state: {} }),
         }}
-        onClearError={() =>
-          navigate(location.pathname, { replace: true, state: {} })
-        }
+        loadingMessage="Loading forgot password form..."
+        errorMessage="Forgot password service unavailable"
       />
     </AuthLayout>
   );

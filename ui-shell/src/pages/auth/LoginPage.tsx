@@ -1,5 +1,5 @@
 import AuthLayout from "@components/auth/AuthLayout";
-import LoginForm from "userUiService/LoginForm";
+import { RemoteWrapper } from "@/components/mfe/RemoteWrapper";
 import { useNavigate } from "react-router-dom";
 import type { User } from "@/types/User";
 import { useAuth } from "@/data/UserStore";
@@ -10,17 +10,22 @@ const LoginPage: React.FC = () => {
 
   return (
     <AuthLayout>
-      <LoginForm
-        onLoginRequireOtp={(user: User) => {
-          setUser(user);
-          navigate("/otp");
+      <RemoteWrapper
+        remote={() => import("userUiService/LoginForm")}
+        remoteProps={{
+          onLoginRequireOtp: (user: User) => {
+            setUser(user);
+            navigate("/otp");
+          },
+          onLoginSuccess: (user: User) => {
+            setUser(user);
+            navigate("/matching");
+          },
+          onCreateAccount: () => navigate("/signup"),
+          onForgotPassword: () => navigate("/forgotPassword"),
         }}
-        onLoginSuccess={(user: User) => {
-          setUser(user);
-          navigate("/matching");
-        }}
-        onCreateAccount={() => navigate("/signup")}
-        onForgotPassword={() => navigate("/forgotPassword")}
+        loadingMessage="Loading login form..."
+        errorMessage="Login service unavailable"
       />
     </AuthLayout>
   );

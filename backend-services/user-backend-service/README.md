@@ -27,7 +27,7 @@ Express.js service that:
 
 3. Clone `.env.example` and rename as `.env`.
 
-4. Replace <db_password> with your MongoDB Atlas account password. Replace <gmail_account> with your Gmail address. Replace <client_id>, <client_secret> and <refresh_token> with the respective values from OAuth Provider. Gmail OAuth setup guide can be found [here](https://dev.to/chandrapantachhetri/sending-emails-securely-using-node-js-nodemailer-smtp-gmail-and-oauth2-g3a)
+4. Replace <db_password> with your MongoDB Atlas account password. Replace <gmail_account> with your Gmail address. Replace <brevo_user> and <brevo_pass> with the respective values from Brevo. Brevo setup guide can be found [here](https://help.brevo.com/hc/en-us/articles/7924908994450-Send-transactional-emails-using-Brevo-SMTP)
 
 5. Run the command `npm start` to start the User Service in production mode, or use `npm run dev` for development mode, which includes features like automatic server restart when you make code changes.
 
@@ -73,11 +73,11 @@ src/
 
 ## API Overview
 
-Base URL: `http://localhost:5277/api/user-service`
+Base URL: `http://localhost:5277/api/v1/user-service`
 
 Routes:
-`http://localhost:5277/api/user-service/auth`
-`http://localhost:5277/api/user-service/users`
+`http://localhost:5277/api/v1/user-service/auth`
+`http://localhost:5277/api/v1/user-service/users`
 
 Rate Limit: 100 requests/10 min
 
@@ -85,7 +85,7 @@ Rate Limit: 100 requests/10 min
 
 Every **POST**, **PUT**, **PATCH** or **DELETE** request requires a CSRF Token.
 
-1. Ensure that CSRF Token is requested via **GET** `http://localhost:5277/api/csrf-token` and the secret value is stored in cookie. Keep the derived token that is provided in the response.
+1. Ensure that CSRF Token is requested via **GET** `http://localhost:5277/api/v1/user-service/csrf-token` and the secret value is stored in cookie. Keep the derived token that is provided in the response.
    Example response:
 
 ```json
@@ -109,7 +109,7 @@ Every **POST**, **PUT**, **PATCH** or **DELETE** request requires a CSRF Token.
 
 - Usage:
 
-  **POST** `http://localhost:5277/api/user-service/users`
+  **POST** `http://localhost:5277/api/v1/user-service/users`
 
 - Headers
   - Required: `X-CSRF-Token: <CSRF-derived-token>`
@@ -159,7 +159,7 @@ Every **POST**, **PUT**, **PATCH** or **DELETE** request requires a CSRF Token.
 
 - Usage:
 
-  **POST** `http://localhost:5277/api/user-service/auth/login`
+  **POST** `http://localhost:5277/api/v1/user-service/auth/login`
 
 - Headers
   - Required: `X-CSRF-Token: <CSRF-derived-token>`
@@ -196,12 +196,12 @@ Every **POST**, **PUT**, **PATCH** or **DELETE** request requires a CSRF Token.
 
 - Usage:
 
-**GET** `http://localhost:5277/api/user-service/users/{userId}`
+**GET** `http://localhost:5277/api/v1/user-service/users/{userId}`
 
 - Parameters
   - Required: `userId` path parameter
 
-  - Example: `http://localhost:5277/api/user-service/users/60c72b2f9b1d4c3a2e5f8b4c`
+  - Example: `http://localhost:5277/api/v1/user-service/users/60c72b2f9b1d4c3a2e5f8b4c`
 
 - Expected Response:
   ```json
@@ -222,7 +222,7 @@ Every **POST**, **PUT**, **PATCH** or **DELETE** request requires a CSRF Token.
 
 - Usage:
 
-**PATCH** `http://localhost:5277/api/user-service/users/{userId}`
+**PATCH** `http://localhost:5277/api/v1/user-service/users/{userId}`
 
 - Headers
   - Required: `X-CSRF-Token: <CSRF-derived-token>`
@@ -232,7 +232,7 @@ Every **POST**, **PUT**, **PATCH** or **DELETE** request requires a CSRF Token.
 - Parameters
   - Required: `userId` path parameter
 
-  - Example: `http://localhost:5277/api/user-service/users/60c72b2f9b1d4c3a2e5f8b4c`
+  - Example: `http://localhost:5277/api/v1/user-service/users/60c72b2f9b1d4c3a2e5f8b4c`
 
 - Body
   - At least one of the following fields is required: `username` (string), `email` (string), `password` (string)
@@ -264,7 +264,7 @@ Every **POST**, **PUT**, **PATCH** or **DELETE** request requires a CSRF Token.
 
 - Usage:
 
-**DELETE** `http://localhost:5277/api/user-service/users/{userId}`
+**DELETE** `http://localhost:5277/api/v1/user-service/users/{userId}`
 
 - Headers
   - Required: `X-CSRF-Token: <CSRF-derived-token>`
@@ -274,7 +274,7 @@ Every **POST**, **PUT**, **PATCH** or **DELETE** request requires a CSRF Token.
 - Parameters
   - Required: `userId` path parameter
 
-  - Example: `http://localhost:5277/api/user-service/users/60c72b2f9b1d4c3a2e5f8b4c`
+  - Example: `http://localhost:5277/api/v1/user-service/users/60c72b2f9b1d4c3a2e5f8b4c`
 
 - Expected Response:
   ```json
@@ -287,7 +287,7 @@ Every **POST**, **PUT**, **PATCH** or **DELETE** request requires a CSRF Token.
 
 - Usage:
 
-**GET** `http://localhost:5277/api/user-service/auth/verify-token`
+**GET** `http://localhost:5277/api/v1/user-service/auth/verify-token`
 
 - Expected Response:
   ```json
@@ -306,7 +306,7 @@ Every **POST**, **PUT**, **PATCH** or **DELETE** request requires a CSRF Token.
 
 - Usage:
 
-**POST** `http://localhost:5277/api/user-service/auth/send-otp`
+**POST** `http://localhost:5277/api/v1/user-service/auth/send-otp`
 
 - Headers
   - Required: `X-CSRF-Token: <CSRF-derived-token>`
@@ -333,7 +333,7 @@ Every **POST**, **PUT**, **PATCH** or **DELETE** request requires a CSRF Token.
 
 - Usage:
 
-**POST** `http://localhost:5277/api/user-service/auth/verify-otp`
+**POST** `http://localhost:5277/api/v1/user-service/auth/verify-otp`
 
 - Headers
   - Required: `X-CSRF-Token: <CSRF-derived-token>`
@@ -369,7 +369,7 @@ Every **POST**, **PUT**, **PATCH** or **DELETE** request requires a CSRF Token.
 
 - Usage:
 
-**POST** `http://localhost:5277/api/user-service/auth/logout`
+**POST** `http://localhost:5277/api/v1/user-service/auth/logout`
 
 - Headers
   - Required: `X-CSRF-Token: <CSRF-derived-token>`
@@ -387,7 +387,7 @@ Every **POST**, **PUT**, **PATCH** or **DELETE** request requires a CSRF Token.
 
 - Usage:
 
-**POST** `http://localhost:5277/api/user-service/auth/forgot-password`
+**POST** `http://localhost:5277/api/v1/user-service/auth/forgot-password`
 
 - Headers
   - Required: `X-CSRF-Token: <CSRF-derived-token>`
@@ -408,7 +408,7 @@ Every **POST**, **PUT**, **PATCH** or **DELETE** request requires a CSRF Token.
 
 - Usage:
 
-**POST** `http://localhost:5277/api/user-service/auth/reset-password?token={resetToken}`
+**POST** `http://localhost:5277/api/v1/user-service/auth/reset-password?token={resetToken}`
 
 - Parameters
   - Required: `resetToken` path parameter
