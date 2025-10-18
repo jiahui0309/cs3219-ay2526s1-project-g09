@@ -31,4 +31,15 @@ const SessionSchema = new mongoose.Schema({
   lastSavedAttempt: { type: LastSavedAttemptSchema },
 });
 
+SessionSchema.index(
+  { "participants.userId": 1, "participants.sessionId": 1 },
+  {
+    partialFilterExpression: {
+      "participants.active": true,
+    },
+    name: "participants_active_lookup",
+    sparse: false,
+  },
+);
+
 export default mongoose.model("Session", SessionSchema, "sessions");
