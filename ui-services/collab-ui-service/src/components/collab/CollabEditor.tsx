@@ -207,9 +207,20 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
     };
   }, [sessionId]);
 
+  useEffect(() => {
+    if (!sessionId || !currentUserId) return;
+    const saved = localStorage.getItem(
+      `collab-code:${sessionId}:${currentUserId}`,
+    );
+    if (saved !== null) {
+      setCode(saved);
+    }
+  }, [sessionId, currentUserId]);
+
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined && sessionId && !sessionEnded) {
       setCode(value);
+      localStorage.setItem(`collab-code:${sessionId}:${currentUserId}`, value);
       socket.emit("codeUpdate", {
         sessionId,
         newCode: value,
