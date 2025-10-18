@@ -61,7 +61,7 @@ class SessionService {
     return plain;
   }
 
-  static async createSession({ questionId, users, sessionId }) {
+  static async createSession({ questionId, users, sessionId, question }) {
     const ensuredSessionId = sessionId
       ? this.validateSessionId(sessionId)
       : this.generateSessionId();
@@ -113,6 +113,15 @@ class SessionService {
           modified = true;
         });
 
+        if (
+          question &&
+          (!existingSession.question ||
+            existingSession.question?.questionId !== question.questionId)
+        ) {
+          existingSession.question = question;
+          modified = true;
+        }
+
         if (modified) {
           await existingSession.save();
         }
@@ -123,6 +132,7 @@ class SessionService {
 
     const session = await Session.create({
       questionId,
+      question,
       participants: this.mapParticipants(ensuredSessionId, sanitizedUsers),
       sessionId: ensuredSessionId,
       active: true,

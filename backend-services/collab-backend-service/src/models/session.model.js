@@ -20,6 +20,21 @@ const ParticipantSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const QuestionInfoSchema = new mongoose.Schema(
+  {
+    questionId: { type: String, required: true },
+    title: { type: String },
+    body: { type: String },
+    difficulty: { type: String },
+    topics: { type: [String], default: [] },
+    hints: { type: [String], default: [] },
+    answer: { type: String },
+    timeLimit: { type: Number },
+    raw: { type: mongoose.Schema.Types.Mixed },
+  },
+  { _id: false },
+);
+
 const SessionSchema = new mongoose.Schema({
   sessionId: { type: String, required: true, unique: true },
   questionId: { type: String, required: true },
@@ -29,6 +44,7 @@ const SessionSchema = new mongoose.Schema({
   endedAt: { type: Date },
   timeTaken: { type: Number },
   lastSavedAttempt: { type: LastSavedAttemptSchema },
+  question: { type: QuestionInfoSchema },
 });
 
 SessionSchema.index(

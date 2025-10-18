@@ -1,10 +1,136 @@
 import SessionService from "../services/session.service.js";
 
+const QUESTION_SERVICE_BASE_URL =
+  process.env.QUESTION_SERVICE_URL ??
+  "http://question-backend-service:5275/api/v1/question-service";
+
+const VALID_DIFFICULTIES = new Set(["Easy", "Medium", "Hard"]);
+
+const normalisePreferences = (input) => {
+  if (!input || typeof input !== "object") {
+    return {};
+  }
+
+  const normalised = {};
+  for (const [topic, value] of Object.entries(input)) {
+    if (!value) {
+      continue;
+    }
+    let difficulties = [];
+    if (Array.isArray(value)) {
+      difficulties = value;
+    } else if (value instanceof Set) {
+      difficulties = Array.from(value);
+    } else if (typeof value === "object") {
+      difficulties = Object.values(value);
+    }
+
+    const filtered = Array.from(new Set(difficulties)).filter((entry) =>
+      VALID_DIFFICULTIES.has(String(entry)),
+    );
+
+    if (filtered.length > 0) {
+      normalised[topic] = filtered;
+    }
+  }
+  return normalised;
+};
+
+const mapQuestionForSession = (question) => {
+  if (!question || typeof question !== "object") {
+    return null;
+  }
+
+  const questionId =
+    question._id?.toString?.() ??
+    question.questionId ??
+    question.globalSlug ??
+    question.id;
+
+  if (!questionId) {
+    return null;
+  }
+
+  return {
+    questionId,
+    title: question.title ?? "",
+    body: question.content ?? question.body ?? "",
+    difficulty: question.difficulty ?? "",
+    topics: question.categoryTitle ? [question.categoryTitle] : [],
+    hints: Array.isArray(question.hints) ? question.hints : [],
+    answer: question.answer ?? "",
+    timeLimit:
+      typeof question.timeLimit === "number" ? question.timeLimit : undefined,
+    raw: question,
+  };
+};
+
+const fetchRandomQuestion = async (categories) => {
+  const endpoint = `${QUESTION_SERVICE_BASE_URL.replace(/\/$/, "")}/random`;
+  console.log(
+    "Fetching random question from:",
+    endpoint,
+    "with categories:",
+    categories,
+  );
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ categories }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => response.statusText);
+    throw new Error(
+      `Failed to retrieve random question (${response.status}): ${errorText}`,
+    );
+  }
+
+  return await response.json();
+};
+
 export const startSession = async (req, res) => {
   try {
-    const { questionId, users } = req.body;
+    const {
+      questionId: providedQuestionId,
+      users,
+      sessionId,
+      questionPreferences,
+    } = req.body ?? {};
 
-    if (!questionId || typeof questionId !== "string") {
+    let resolvedQuestionId =
+      typeof providedQuestionId === "string" && providedQuestionId.trim().length
+        ? providedQuestionId.trim()
+        : null;
+    let questionPayload = null;
+
+    const categories = normalisePreferences(questionPreferences);
+
+    if (!resolvedQuestionId) {
+      if (Object.keys(categories).length === 0) {
+        return res.status(400).json({
+          error: "questionId or valid questionPreferences is required",
+        });
+      }
+
+      try {
+        const randomQuestion = await fetchRandomQuestion(categories);
+        questionPayload = mapQuestionForSession(randomQuestion);
+        if (!questionPayload) {
+          throw new Error("Received invalid question payload");
+        }
+        resolvedQuestionId = questionPayload.questionId;
+      } catch (questionError) {
+        console.error("Failed to fetch random question:", questionError);
+        return res.status(502).json({
+          error: "Unable to retrieve random question",
+          details: questionError.message,
+        });
+      }
+    }
+
+    if (!resolvedQuestionId) {
       return res.status(400).json({ error: "questionId is required" });
     }
 
@@ -12,7 +138,12 @@ export const startSession = async (req, res) => {
       return res.status(400).json({ error: "At least one user is required" });
     }
 
-    const session = await SessionService.createSession({ questionId, users });
+    const session = await SessionService.createSession({
+      questionId: resolvedQuestionId,
+      users,
+      sessionId,
+      question: questionPayload,
+    });
 
     const io = req.app?.locals?.io;
     if (io) {
@@ -23,7 +154,10 @@ export const startSession = async (req, res) => {
       );
     }
 
-    res.status(201).json({ success: true, session });
+    res.status(201).json({
+      success: true,
+      session,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
