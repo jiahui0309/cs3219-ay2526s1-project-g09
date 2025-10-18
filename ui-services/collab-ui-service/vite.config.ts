@@ -17,9 +17,11 @@ export default defineConfig({
         "./SessionHeader": "./src/components/SessionHeader",
         "./ChatWindow": "./src/components/chat/ChatWindow",
         "./CollabSessionContext": "./src/context/CollabSessionContext",
+        "./CollabSessionHook": "./src/context/CollabSessionHook",
       },
       remotes: {
         userUiService: "http://localhost:5177/assets/remoteEntry.js",
+        questionUiService: "http://localhost:5175/assets/remoteEntry.js",
       },
       shared: ["react", "react-dom"],
     }),

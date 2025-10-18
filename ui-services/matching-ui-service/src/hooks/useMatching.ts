@@ -14,12 +14,7 @@ import {
   requestMatch,
   getTimeoutConfig,
 } from "@/api/matchingService";
-import {
-  startCollabSession,
-  connectToSession,
-  waitForActiveSession,
-  type CollabSession,
-} from "@/api/collabService";
+import { type CollabSession } from "@/api/collabService";
 import { useNavigate } from "react-router-dom";
 
 type PageView = "initial" | "preferences" | "matching" | "matchFound";
@@ -75,28 +70,28 @@ export function useMatching({ username }: UseMatchingProps) {
       const response = await connectMatch(username, data.matchId);
 
       if (response.status.toUpperCase() === "SUCCESS") {
-        // Both users accepted - navigate to collab
-        const participants = [username, data.match.userId].sort();
-        const isPrimaryRequester = participants[0] === username;
-        const questionId = "placeholder-questionId";
-
-        let sessionRecord: CollabSession | null = null;
+        const sessionRecord = response.session as CollabSession | null;
 
         try {
-          if (isPrimaryRequester) {
-            sessionRecord = await startCollabSession({
-              questionId,
-              users: participants,
-            });
-          } else {
-            sessionRecord = await waitForActiveSession(username);
-          }
-
           if (!sessionRecord) {
-            throw new Error("No active session created");
+            throw new Error(
+              "Collaboration session was not created for this match",
+            );
           }
 
-          await connectToSession(username, sessionRecord.sessionId);
+          const participants = [username, data.match.userId].sort();
+          const isPrimaryRequester = participants[0] === username;
+
+          if (
+            isPrimaryRequester &&
+            sessionRecord.users &&
+            !sessionRecord.users.includes(username)
+          ) {
+            console.warn(
+              "Collaboration session does not list the current user as a participant",
+              sessionRecord,
+            );
+          }
 
           navigate("/collab");
         } catch (sessionError) {
