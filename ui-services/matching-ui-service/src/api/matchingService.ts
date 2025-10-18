@@ -151,17 +151,6 @@ export async function createPreference(
 export interface MatchAcceptanceResponse {
   status: "SUCCESS" | "REJECTED" | "PENDING";
   session?: CollabSession | null;
-  match: {
-    matchId: string;
-    user1Id: string;
-    user2Id: string;
-    questionPreference: {
-      topics: string[];
-      difficulties: string[];
-      minTime: number;
-      maxTime: number;
-    };
-  };
 }
 
 /**

@@ -12,6 +12,16 @@ export interface CollabSession {
   createdAt?: string;
   endedAt?: string;
   timeTaken?: number;
+  question?: {
+    questionId: string;
+    title: string;
+    body: string;
+    topics: string[];
+    hints: string[];
+    answer: string;
+    timeLimit?: number;
+    raw?: unknown;
+  } | null;
 }
 
 interface StartSessionResponse {
