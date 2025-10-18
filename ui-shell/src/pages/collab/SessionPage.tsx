@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import SessionLayout from "@components/layout/BlueBgLayout";
 import NavHeader from "@components/collab/SessionHeader";
 import { CollabSessionProvider } from "collabUiService/CollabSessionContext";
@@ -40,7 +40,13 @@ interface SessionContentProps {
 }
 
 const SessionContent: React.FC<SessionContentProps> = ({ user }) => {
-  const { session, loading, error } = useRemoteCollabSession();
+  const { session, loading, error, refresh } = useRemoteCollabSession();
+
+  useEffect(() => {
+    if (!loading && !session) {
+      void refresh();
+    }
+  }, [loading, session, refresh]);
 
   if (loading) {
     return (

@@ -5,6 +5,7 @@ const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
 const HEARTBEAT_EVENT = "heartbeat";
 
 const trackedSockets = new Map();
+const disconnectTimers = new Map();
 
 const refreshSocketActivity = (socket, options = {}) => {
   const { persist = true } = options;
@@ -151,6 +152,15 @@ export const initSocket = (server) => {
         socket.data.userId = userId.trim();
       }
 
+      if (socket.data.userId) {
+        const timerKey = `${sessionId}:${socket.data.userId}`;
+        const timer = disconnectTimers.get(timerKey);
+        if (timer) {
+          clearTimeout(timer);
+          disconnectTimers.delete(timerKey);
+        }
+      }
+
       refreshSocketActivity(socket);
 
       console.log(
@@ -179,35 +189,46 @@ export const initSocket = (server) => {
         return;
       }
 
-      try {
-        const { session, ended, removedUser } =
-          await SessionService.disconnectSession(sessionId, { userId });
-
-        if (!session) {
-          return;
-        }
-
-        if (ended) {
-          io.to(sessionId).emit("sessionEnded", sessionId);
-          console.log(
-            `Session ${sessionId} ended because socket ${socket.id} disconnected`,
-          );
-        } else if (removedUser) {
-          io.to(sessionId).emit("participantLeft", {
-            sessionId,
-            userId: removedUser,
-            reason: "disconnect",
-          });
-          console.log(
-            `User ${removedUser} left session ${sessionId} via disconnect ${socket.id}`,
-          );
-        }
-      } catch (error) {
-        console.error(
-          `Failed to end session ${sessionId} after disconnect ${socket.id}:`,
-          error,
-        );
+      const timerKey = `${sessionId}:${userId ?? ""}`;
+      const existingTimer = disconnectTimers.get(timerKey);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
       }
+
+      const timer = setTimeout(async () => {
+        disconnectTimers.delete(timerKey);
+        try {
+          const { session, ended, removedUser } =
+            await SessionService.disconnectSession(sessionId, { userId });
+
+          if (!session) {
+            return;
+          }
+
+          if (ended) {
+            io.to(sessionId).emit("sessionEnded", sessionId);
+            console.log(
+              `Session ${sessionId} ended because socket ${socket.id} disconnected`,
+            );
+          } else if (removedUser) {
+            io.to(sessionId).emit("participantLeft", {
+              sessionId,
+              userId: removedUser,
+              reason: "disconnect",
+            });
+            console.log(
+              `User ${removedUser} left session ${sessionId} via disconnect ${socket.id}`,
+            );
+          }
+        } catch (error) {
+          console.error(
+            `Failed to end session ${sessionId} after disconnect ${socket.id}:`,
+            error,
+          );
+        }
+      }, 10_000);
+
+      disconnectTimers.set(timerKey, timer);
     });
   });
 
