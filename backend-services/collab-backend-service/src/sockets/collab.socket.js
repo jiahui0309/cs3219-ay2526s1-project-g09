@@ -226,7 +226,7 @@ export const initSocket = (server) => {
             error,
           );
         }
-      }, 10_000);
+      }, 120_000);
 
       disconnectTimers.set(timerKey, timer);
     });
