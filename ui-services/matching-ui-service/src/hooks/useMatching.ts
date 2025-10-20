@@ -5,7 +5,7 @@ import type {
   MatchResult,
   TimeoutConfig,
   MatchDetails,
-} from "@/api/matchingService";
+} from "@/api/routes/matchingService";
 import {
   cancelMatch,
   connectMatch,
@@ -13,7 +13,7 @@ import {
   rejectMatch,
   requestMatch,
   getTimeoutConfig,
-} from "@/api/matchingService";
+} from "@/api/routes/matchingService";
 import { useNavigate } from "react-router-dom";
 
 type PageView = "initial" | "preferences" | "matching" | "matchFound";
