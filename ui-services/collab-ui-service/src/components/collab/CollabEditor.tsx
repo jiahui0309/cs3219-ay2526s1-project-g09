@@ -47,6 +47,8 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
               sessionId: effectiveSessionId,
               userId: currentUserId,
               force: !currentUserId,
+              finalCode: code,
+              language: DEFAULT_LANGUAGE,
             }),
           },
         );
@@ -66,7 +68,7 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       setSessionEndedMessage(null);
       window.location.href = "/matching";
     }
-  }, [currentUserId, initialSessionId, sessionId]);
+  }, [code, currentUserId, initialSessionId, sessionId]);
 
   useEffect(() => {
     const handleLeaveEvent = () => {
