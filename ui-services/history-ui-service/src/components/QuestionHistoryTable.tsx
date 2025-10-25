@@ -1,17 +1,38 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import QuestionCard from "./QuestionCard";
-import { initialHistory } from "@/data/mock-history-data";
+import type { HistoryEntry } from "@/types/HistoryEntry";
 
 const itemsPerPage = 8;
 
-const HistoryTable: React.FC = () => {
+interface HistoryTableProps {
+  items: HistoryEntry[];
+  isLoading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
+}
+
+const HistoryTable: React.FC<HistoryTableProps> = ({
+  items,
+  isLoading = false,
+  error = null,
+  onRetry,
+}) => {
   const [currentPage, setCurrentPage] = useState(1);
 
-  const totalPages = Math.ceil(initialHistory.length / itemsPerPage);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [items.length]);
+
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(items.length / itemsPerPage));
+  }, [items.length]);
+
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentItems = initialHistory.slice(startIndex, endIndex);
+  const currentItems = items.slice(startIndex, endIndex);
+
+  const showEmptyState = !isLoading && !error && items.length === 0;
 
   const handleNextPage = () => {
     if (currentPage < totalPages) {
@@ -29,45 +50,63 @@ const HistoryTable: React.FC = () => {
     <div className="flex justify-center flex-col w-full p-6 rounded-lg">
       {/* Header */}
       <div className="flex justify-end items-center mb-4 text-gray-400 text-sm">
-        <span>
-          Showing {startIndex + 1} to{" "}
-          {Math.min(endIndex, initialHistory.length)} of {initialHistory.length}
+        <span className="mr-auto text-xs uppercase tracking-widest text-slate-500">
+          History Records
         </span>
-        <Button
-          onClick={handlePreviousPage}
-          disabled={currentPage === 1}
-          variant="link"
-          className="text-gray-400 px-2 hover:no-underline"
-        >
-          Previous
-        </Button>
-        <Button
-          onClick={handleNextPage}
-          disabled={currentPage === totalPages}
-          variant="link"
-          className="text-gray-400 px-2 hover:no-underline"
-        >
-          Next
-        </Button>
-      </div>
-      <div className="p-2 flex items-center gap-4 font-bold">
-        <div className="w-15">
-          <div className="grid justify-center">No.</div>
-        </div>
-        <div className="px-10 flex-1 grid grid-cols-4 flex gap-4 ">
-          <div className="flex flex-col">Question</div>
-
-          <div className="flex flex-col">Topic</div>
-          <div className="flex flex-col">Difficulty</div>
-          <div className="flex flex-col">Time Limit</div>
+        <span>
+          Showing {items.length === 0 ? 0 : startIndex + 1} to{" "}
+          {Math.min(endIndex, items.length)} of {items.length}
+        </span>
+        <div className="flex items-center">
+          <Button
+            onClick={handlePreviousPage}
+            disabled={currentPage === 1 || isLoading || showEmptyState}
+            variant="link"
+            className="text-gray-400 px-2 hover:no-underline"
+          >
+            Previous
+          </Button>
+          <Button
+            onClick={handleNextPage}
+            disabled={currentPage === totalPages || isLoading || showEmptyState}
+            variant="link"
+            className="text-gray-400 px-2 hover:no-underline"
+          >
+            Next
+          </Button>
         </div>
       </div>
-      {/* Content */}
-      <div className="flex flex-col items-center gap-4 overflow-y-auto min-h-[70vh]">
-        {currentItems.map((item, index) => (
-          <QuestionCard key={index} index={index} item={item} />
-        ))}
-      </div>
+      {error && (
+        <div className="flex items-center gap-3 rounded-lg border border-red-800 bg-red-950/40 p-4 text-sm text-red-300">
+          <span>{error}</span>
+          {onRetry && (
+            <Button size="sm" variant="secondary" onClick={onRetry}>
+              Try again
+            </Button>
+          )}
+        </div>
+      )}
+      {isLoading && (
+        <div className="flex items-center justify-center py-20 text-slate-400">
+          Loading history…
+        </div>
+      )}
+      {showEmptyState && (
+        <div className="flex items-center justify-center py-20 text-slate-400">
+          No history snapshots found for this filter.
+        </div>
+      )}
+      {!isLoading && !error && currentItems.length > 0 && (
+        <div className="flex flex-col items-center gap-4 overflow-y-auto">
+          {currentItems.map((item, index) => (
+            <QuestionCard
+              key={item.id}
+              index={startIndex + index}
+              item={item}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
