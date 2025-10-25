@@ -7,6 +7,7 @@ export interface HistoryEntry {
   questionTitle: string;
   difficulty?: string;
   topics: string[];
+  timeLimit?: number;
   language?: string;
   savedBy?: string;
   code: string;

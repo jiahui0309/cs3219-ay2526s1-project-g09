@@ -23,6 +23,8 @@ const QuestionPreviewCard: React.FC<QuestionPreviewCardProps> = ({
     : "Not recorded";
   const topics =
     item.topics.length > 0 ? item.topics.join(", ") : "No tagged topics";
+  const timeLimit =
+    typeof item.timeLimit === "number" ? `${item.timeLimit} min` : "Unknown";
 
   return (
     <Card className="w-full bg-slate-900/80 border border-slate-700 text-slate-100">
@@ -39,6 +41,9 @@ const QuestionPreviewCard: React.FC<QuestionPreviewCardProps> = ({
           <span>
             <span className="text-slate-400">Difficulty:</span>{" "}
             {item.difficulty || "Unknown"}
+          </span>
+          <span>
+            <span className="text-slate-400">Time Limit:</span> {timeLimit}
           </span>
           <span>
             <span className="text-slate-400">Language:</span>{" "}

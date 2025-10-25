@@ -20,6 +20,11 @@ export default defineConfig({
       },
       remotes: {
         userUiService: "http://localhost:5177/assets/remoteEntry.js",
+        questionUiService:
+          process.env.VITE_QUESTION_UI_REMOTE ??
+          (process.env.VITE_MODE === "dev"
+            ? "http://localhost:5175/assets/remoteEntry.js"
+            : "https://peerprep-question-ui-service.s3-website-ap-southeast-1.amazonaws.com/assets/remoteEntry.js"),
       },
       shared: ["react", "react-dom"],
     }),

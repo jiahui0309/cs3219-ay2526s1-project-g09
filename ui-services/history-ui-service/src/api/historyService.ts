@@ -28,6 +28,7 @@ interface HistoryEntryPayload {
     title?: string;
     difficulty?: string;
     topics?: unknown;
+    timeLimit?: number;
   };
   code?: string;
   language?: string;
@@ -78,6 +79,10 @@ const mapToHistoryEntry = (payload: HistoryEntryPayload): HistoryEntry => {
     questionTitle: normaliseString(payload.question?.title) ?? questionId,
     difficulty: normaliseString(payload.question?.difficulty) ?? undefined,
     topics: toStringArray(payload.question?.topics ?? []),
+    timeLimit:
+      typeof payload.question?.timeLimit === "number"
+        ? payload.question?.timeLimit
+        : undefined,
     language: normaliseString(payload.language) ?? undefined,
     savedBy: normaliseString(payload.savedBy) ?? undefined,
     code: typeof payload.code === "string" ? payload.code : "",

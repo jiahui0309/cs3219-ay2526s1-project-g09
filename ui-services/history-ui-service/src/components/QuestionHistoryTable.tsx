@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import QuestionCard from "./QuestionCard";
 import type { HistoryEntry } from "@/types/HistoryEntry";
+import { cn } from "@/lib/utils";
 
 const itemsPerPage = 8;
 
@@ -10,6 +10,8 @@ interface HistoryTableProps {
   isLoading?: boolean;
   error?: string | null;
   onRetry?: () => void;
+  selectedId?: string;
+  onSelect?: (entry: HistoryEntry) => void;
 }
 
 const HistoryTable: React.FC<HistoryTableProps> = ({
@@ -17,6 +19,8 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
   isLoading = false,
   error = null,
   onRetry,
+  selectedId,
+  onSelect,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -97,14 +101,72 @@ const HistoryTable: React.FC<HistoryTableProps> = ({
         </div>
       )}
       {!isLoading && !error && currentItems.length > 0 && (
-        <div className="flex flex-col items-center gap-4 overflow-y-auto">
-          {currentItems.map((item, index) => (
-            <QuestionCard
-              key={item.id}
-              index={startIndex + index}
-              item={item}
-            />
-          ))}
+        <div className="overflow-x-auto rounded-lg border border-slate-800 bg-slate-900/60">
+          <table className="min-w-full divide-y divide-slate-800">
+            <thead className="bg-slate-900/80 text-xs uppercase tracking-wider text-slate-400">
+              <tr>
+                <th scope="col" className="px-4 py-3 text-left">
+                  No.
+                </th>
+                <th scope="col" className="px-4 py-3 text-left">
+                  Question Attempted
+                </th>
+                <th scope="col" className="px-4 py-3 text-left">
+                  Topic
+                </th>
+                <th scope="col" className="px-4 py-3 text-left">
+                  Difficulty
+                </th>
+                <th scope="col" className="px-4 py-3 text-left">
+                  Time Limit
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800 text-sm text-slate-200">
+              {currentItems.map((item, index) => {
+                const topics =
+                  item.topics.length > 0 ? item.topics.join(", ") : "—";
+                const timeLimit =
+                  typeof item.timeLimit === "number"
+                    ? `${item.timeLimit} min`
+                    : "—";
+                const isSelected = item.id === selectedId;
+                return (
+                  <tr
+                    key={item.id}
+                    onClick={() => onSelect?.(item)}
+                    className={cn(
+                      "hover:bg-slate-800/60 cursor-pointer transition-colors",
+                      isSelected && "bg-slate-800/80",
+                    )}
+                  >
+                    <td className="px-4 py-3 align-top text-slate-300">
+                      {startIndex + index + 1}
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-orange-300">
+                          {item.questionTitle || "Untitled Question"}
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          Session {item.sessionId}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 align-top text-slate-300">
+                      {topics}
+                    </td>
+                    <td className="px-4 py-3 align-top text-slate-300">
+                      {item.difficulty ?? "—"}
+                    </td>
+                    <td className="px-4 py-3 align-top text-slate-300">
+                      {timeLimit}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
