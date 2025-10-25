@@ -146,6 +146,7 @@ export const initSocket = (server) => {
             });
           });
         } else if (result.removedUser) {
+          const participantIdsForRemoved = getParticipantIds(result.session);
           io.to(sessionId).emit("participantLeft", {
             sessionId,
             userId: result.removedUser,
@@ -168,8 +169,8 @@ export const initSocket = (server) => {
             savedBy: result.removedUser,
             userId: result.removedUser,
             participants:
-              getParticipantIds(result.session).length > 0
-                ? getParticipantIds(result.session)
+              participantIdsForRemoved.length > 0
+                ? participantIdsForRemoved
                 : [result.removedUser],
             clearSnapshot: false,
           });
@@ -292,8 +293,7 @@ export const initSocket = (server) => {
             const targets = Array.from(
               new Set(preferred.length > 0 ? preferred : uniqueParticipants),
             );
-            const sessionEndedAt =
-              session?.endedAt ?? new Date().toISOString();
+            const sessionEndedAt = session?.endedAt ?? new Date().toISOString();
 
             targets.forEach((participantId, index) => {
               console.log("[collab.socket] Persisting disconnect history", {
@@ -313,6 +313,7 @@ export const initSocket = (server) => {
               });
             });
           } else if (removedUser) {
+            const participantIdsForRemoved = getParticipantIds(session);
             io.to(sessionId).emit("participantLeft", {
               sessionId,
               userId: removedUser,
@@ -332,8 +333,8 @@ export const initSocket = (server) => {
               savedBy: removedUser,
               userId: removedUser,
               participants:
-                getParticipantIds(session).length > 0
-                  ? getParticipantIds(session)
+                participantIdsForRemoved.length > 0
+                  ? participantIdsForRemoved
                   : [removedUser],
               clearSnapshot: false,
             });

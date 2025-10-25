@@ -95,9 +95,7 @@ export async function persistSessionHistory(session, options = {}) {
   }
 
   const targetUserId =
-    sanitiseString(options.userId) ??
-    sanitiseString(options.savedBy) ??
-    null;
+    sanitiseString(options.userId) ?? sanitiseString(options.savedBy) ?? null;
 
   if (!targetUserId) {
     console.warn(
@@ -111,10 +109,12 @@ export async function persistSessionHistory(session, options = {}) {
   }
 
   const snapshot =
-    options.snapshot ?? CodeSnapshotService.get(sessionId, targetUserId) ?? undefined;
+    options.snapshot ??
+    CodeSnapshotService.get(sessionId, targetUserId) ??
+    CodeSnapshotService.get(sessionId) ??
+    undefined;
 
-  const code =
-    typeof options.code === "string" ? options.code : snapshot?.code;
+  const code = typeof options.code === "string" ? options.code : snapshot?.code;
 
   if (!code) {
     console.warn(

@@ -301,8 +301,7 @@ export const disconnectSession = async (req, res) => {
         }
       }
 
-      const sessionEndedAt =
-        session.endedAt ?? new Date().toISOString();
+      const sessionEndedAt = session.endedAt ?? new Date().toISOString();
 
       targets.forEach((participantId, index) => {
         persistForUser(participantId, {

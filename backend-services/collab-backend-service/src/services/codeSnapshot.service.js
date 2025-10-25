@@ -84,10 +84,12 @@ class CodeSnapshotService {
       return [];
     }
 
-    return Array.from(sessionEntry.users.entries()).map(([userId, snapshot]) => ({
-      userId,
-      ...snapshot,
-    }));
+    return Array.from(sessionEntry.users.entries()).map(
+      ([userId, snapshot]) => ({
+        userId,
+        ...snapshot,
+      }),
+    );
   }
 
   clearForUser(sessionId, userId) {
