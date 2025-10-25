@@ -1,11 +1,35 @@
 import { Server } from "socket.io";
 import SessionService from "../services/session.service.js";
+import CodeSnapshotService from "../services/codeSnapshot.service.js";
+import { persistSessionHistory } from "../services/sessionHistory.service.js";
 
 const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
 const HEARTBEAT_EVENT = "heartbeat";
 
 const trackedSockets = new Map();
 const disconnectTimers = new Map();
+
+const getParticipantIds = (session) => {
+  const ids = [];
+
+  if (Array.isArray(session?.users)) {
+    ids.push(
+      ...session.users.filter(
+        (id) => typeof id === "string" && id.trim().length > 0,
+      ),
+    );
+  }
+
+  if (Array.isArray(session?.participants)) {
+    ids.push(
+      ...session.participants
+        .map((participant) => participant?.userId)
+        .filter((id) => typeof id === "string" && id.trim().length > 0),
+    );
+  }
+
+  return Array.from(new Set(ids));
+};
 
 const refreshSocketActivity = (socket, options = {}) => {
   const { persist = true } = options;
@@ -90,10 +114,37 @@ export const initSocket = (server) => {
         });
 
         if (result.ended) {
+          const participantIds = getParticipantIds(result.session);
           io.to(sessionId).emit("sessionEnded", sessionId);
           console.log(
             `Session ${sessionId} ended due to inactivity for user ${userId}`,
           );
+          const uniqueParticipants =
+            participantIds.length > 0 ? participantIds : [];
+          const preferred = [userId, result.removedUser].filter(Boolean);
+          const targets = Array.from(
+            new Set(preferred.length > 0 ? preferred : uniqueParticipants),
+          );
+          const sessionEndedAt =
+            result.session?.endedAt ?? new Date().toISOString();
+
+          targets.forEach((participantId, index) => {
+            console.log("[collab.socket] Persisting inactivity history", {
+              sessionId,
+              participantId,
+              index,
+              total: targets.length,
+            });
+            const participantsForPayload =
+              participantIds.length > 0 ? participantIds : [participantId];
+            void persistSessionHistory(result.session, {
+              savedBy: participantId,
+              userId: participantId,
+              participants: participantsForPayload,
+              clearSnapshot: index === targets.length - 1,
+              sessionEndedAt,
+            });
+          });
         } else if (result.removedUser) {
           io.to(sessionId).emit("participantLeft", {
             sessionId,
@@ -106,6 +157,22 @@ export const initSocket = (server) => {
           console.log(
             `Marked ${result.removedUser} inactive in session ${sessionId} (socket ${socket.id})`,
           );
+          console.log(
+            "[collab.socket] Persisting history for removed inactive user",
+            {
+              sessionId,
+              userId: result.removedUser,
+            },
+          );
+          void persistSessionHistory(result.session, {
+            savedBy: result.removedUser,
+            userId: result.removedUser,
+            participants:
+              getParticipantIds(result.session).length > 0
+                ? getParticipantIds(result.session)
+                : [result.removedUser],
+            clearSnapshot: false,
+          });
         }
       } catch (error) {
         console.error(
@@ -173,8 +240,13 @@ export const initSocket = (server) => {
       );
     });
 
-    socket.on("codeUpdate", ({ sessionId, newCode }) => {
+    socket.on("codeUpdate", ({ sessionId, newCode, language }) => {
       refreshSocketActivity(socket, { persist: false });
+      CodeSnapshotService.update(sessionId, {
+        code: newCode,
+        language,
+        userId: socket.data.userId,
+      });
       socket.to(sessionId).emit("codeUpdate", newCode);
     });
 
@@ -209,10 +281,37 @@ export const initSocket = (server) => {
           }
 
           if (ended) {
+            const participantIds = getParticipantIds(session);
             io.to(sessionId).emit("sessionEnded", sessionId);
             console.log(
               `Session ${sessionId} ended because socket ${socket.id} disconnected`,
             );
+            const uniqueParticipants =
+              participantIds.length > 0 ? participantIds : [];
+            const preferred = [userId, removedUser].filter(Boolean);
+            const targets = Array.from(
+              new Set(preferred.length > 0 ? preferred : uniqueParticipants),
+            );
+            const sessionEndedAt =
+              session?.endedAt ?? new Date().toISOString();
+
+            targets.forEach((participantId, index) => {
+              console.log("[collab.socket] Persisting disconnect history", {
+                sessionId,
+                participantId,
+                index,
+                total: targets.length,
+              });
+              const participantsForPayload =
+                participantIds.length > 0 ? participantIds : [participantId];
+              void persistSessionHistory(session, {
+                savedBy: participantId,
+                userId: participantId,
+                participants: participantsForPayload,
+                clearSnapshot: index === targets.length - 1,
+                sessionEndedAt,
+              });
+            });
           } else if (removedUser) {
             io.to(sessionId).emit("participantLeft", {
               sessionId,
@@ -222,6 +321,22 @@ export const initSocket = (server) => {
             console.log(
               `User ${removedUser} left session ${sessionId} via disconnect ${socket.id}`,
             );
+            console.log(
+              "[collab.socket] Persisting history for removed disconnected user",
+              {
+                sessionId,
+                userId: removedUser,
+              },
+            );
+            void persistSessionHistory(session, {
+              savedBy: removedUser,
+              userId: removedUser,
+              participants:
+                getParticipantIds(session).length > 0
+                  ? getParticipantIds(session)
+                  : [removedUser],
+              clearSnapshot: false,
+            });
           }
         } catch (error) {
           console.error(

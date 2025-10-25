@@ -1,5 +1,4 @@
-const HISTORY_SERVICE_BASE_URL =
-  process.env.HISTORY_SERVICE_URL?.replace(/\/$/, "") ?? "";
+const HISTORY_SERVICE_BASE_URL = process.env.HISTORY_SERVICE_URL;
 
 let hasLoggedMissingUrl = false;
 
