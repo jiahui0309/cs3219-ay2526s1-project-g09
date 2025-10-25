@@ -16,6 +16,7 @@ export default defineConfig({
         "./QuestionHistoryTable": "./src/components/QuestionHistoryTable",
         "./QuestionAttemptTable": "./src/components/QuestionAttemptTable",
         "./NotesWindow": "./src/components/NotesWindow",
+        "./HistoryApp": "./src/App",
       },
       remotes: {
         userUiService: "http://localhost:5177/assets/remoteEntry.js",

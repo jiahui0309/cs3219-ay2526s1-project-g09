@@ -7,7 +7,7 @@ const HistoryPage: React.FC = () => {
   return (
     <Layout navHeader={<NavHeader />}>
       <RemoteWrapper
-        remote={() => import("historyUiService/QuestionHistoryTable")}
+        remote={() => import("historyUiService/HistoryApp")}
         remoteName="History UI Service"
         loadingMessage="Loading History..."
         errorMessage="History service unavailable"
