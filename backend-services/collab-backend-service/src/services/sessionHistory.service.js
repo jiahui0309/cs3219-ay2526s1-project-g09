@@ -45,6 +45,10 @@ const mapQuestion = (session, overrideQuestion) => {
               .map((topic) => sanitiseString(topic))
               .filter(Boolean)
           : [],
+        timeLimit:
+          typeof overrideQuestion.timeLimit === "number"
+            ? overrideQuestion.timeLimit
+            : undefined,
       };
     }
   }
@@ -65,6 +69,12 @@ const mapQuestion = (session, overrideQuestion) => {
     topics: Array.isArray(fromSession.topics)
       ? fromSession.topics.map((topic) => sanitiseString(topic)).filter(Boolean)
       : [],
+    timeLimit:
+      typeof fromSession.timeLimit === "number"
+        ? fromSession.timeLimit
+        : typeof session?.timeLimit === "number"
+          ? session.timeLimit
+          : undefined,
   };
 };
 

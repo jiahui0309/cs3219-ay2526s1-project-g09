@@ -6,6 +6,7 @@ const QuestionSchema = new mongoose.Schema(
     title: { type: String },
     difficulty: { type: String },
     topics: { type: [String], default: [] },
+    timeLimit: { type: Number },
   },
   { _id: false },
 );

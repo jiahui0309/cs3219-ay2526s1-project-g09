@@ -46,6 +46,8 @@ const sanitiseQuestion = (question) => {
     topics: Array.isArray(question.topics)
       ? question.topics.map((topic) => sanitiseString(topic)).filter(Boolean)
       : [],
+    timeLimit:
+      typeof question.timeLimit === "number" ? question.timeLimit : undefined,
   };
 };
 
