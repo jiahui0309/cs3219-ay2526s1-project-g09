@@ -1,0 +1,14 @@
+import { Router } from "express";
+import {
+  createHistorySnapshot,
+  getHistorySnapshot,
+  listHistorySnapshots,
+} from "../controllers/history.controller.js";
+
+const router = Router();
+
+router.get("/history", listHistorySnapshots);
+router.get("/history/:id", getHistorySnapshot);
+router.post("/history", createHistorySnapshot);
+
+export default router;
