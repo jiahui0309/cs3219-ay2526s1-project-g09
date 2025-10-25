@@ -1,44 +1,41 @@
 import React from "react";
 import Layout from "@components/layout/BlueBgLayout";
-import QuestionDisplay from "questionUiService/QuestionDisplay";
-import { mockQuestions } from "@/data/mock-history-data";
 import NavHeader from "@components/common/NavHeader";
+import { useAuth } from "@/data/UserStore";
+import { useNavigate } from "react-router-dom";
 import { RemoteWrapper } from "@/components/mfe/RemoteWrapper";
+import { normaliseHistorySnapshot } from "@/api/historyService";
 
-const QuestionAttemptsPage: React.FC = () => {
+const AttemptPage: React.FC = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const remoteProps = React.useMemo(
+    () => ({
+      userId: user?.username,
+      allowUserFilter: false,
+      renderQuestionPanel: false,
+      onEntrySelect: (entry: unknown) => {
+        const snapshot = normaliseHistorySnapshot(entry as any);
+        if (snapshot) {
+          navigate(`/history/${snapshot.id}`, { state: { entry: snapshot } });
+        }
+      },
+    }),
+    [user?.username, navigate],
+  );
+
   return (
     <Layout navHeader={<NavHeader />}>
-      <div className="flex h-[85vh] px-4 gap-4">
-        {/* Left Column */}
-        <div className="flex flex-col w-1/3 gap-4">
-          {/* Question Section */}
-          <div className="h-[40vh] overflow-y-auto">
-            <QuestionDisplay question={mockQuestions[0]} />
-          </div>
-
-          {/* Notes Section */}
-          <div className="flex flex-1">
-            <RemoteWrapper
-              remote={() => import("historyUiService/NotesWindow")}
-              remoteName="History UI Service"
-              loadingMessage="Loading Notes..."
-              errorMessage="Notes service unavailable"
-            />
-          </div>
-        </div>
-
-        {/* Right Column */}
-        <div className="flex flex-1">
-          <RemoteWrapper
-            remote={() => import("collabUiService/WorkingWindow")}
-            remoteName="History UI Service"
-            loadingMessage="Loading Workspace..."
-            errorMessage="Workspace service unavailable"
-          />
-        </div>
-      </div>
+      <RemoteWrapper
+        remote={() => import("historyUiService/HistoryApp")}
+        remoteName="History UI Service"
+        loadingMessage="Loading attempt history..."
+        errorMessage="History service unavailable"
+        remoteProps={remoteProps}
+      />
     </Layout>
   );
 };
 
-export default QuestionAttemptsPage;
+export default AttemptPage;

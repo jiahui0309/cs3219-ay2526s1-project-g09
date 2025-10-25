@@ -14,8 +14,9 @@ import MatchingPage from "@/pages/matching/MatchingPage";
 import SessionPage from "@pages/collab/SessionPage";
 
 import HistoryPage from "@pages/history/HistoryPage";
-import QuestionAttemptsPage from "@pages/history/QuestionAttemptsPage";
 import AttemptPage from "@pages/history/AttemptPage";
+import HistoryDetailPage from "@pages/history/HistoryDetailPage";
+import HistoryAttemptPage from "@pages/history/HistoryAttemptPage";
 
 import ProtectedRoute from "@components/auth/ProtectedRoute";
 import UnverifiedRoute from "@components/auth/UnverifiedRoute";
@@ -61,7 +62,11 @@ export default function App() {
         <Route path="/matching" element={<MatchingPage />} />
         <Route path="/collab" element={<SessionPage />} />
         <Route path="/history" element={<HistoryPage />} />
-        <Route path="/questionAttempts" element={<QuestionAttemptsPage />} />
+        <Route path="/history/:historyId" element={<HistoryDetailPage />} />
+        <Route
+          path="/history/:historyId/attempt"
+          element={<HistoryAttemptPage />}
+        />
         <Route path="/attempt" element={<AttemptPage />} />
         <Route path="/settings" element={<UserProfilePage />} />
       </Route>
