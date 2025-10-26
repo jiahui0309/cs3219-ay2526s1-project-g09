@@ -32,10 +32,11 @@ const refreshSocketActivity = (socket, options = {}) => {
 
 export const initSocket = (server) => {
   const io = new Server(server, {
+    path: "/api/v1/collab-service/socket.io",
     cors: {
       origin: [
         "http://localhost:5173",
-        "http://peerprep-ui-shell.s3-website-ap-southeast-1.amazonaws.com",
+        "https://d1h013fkmpx3nu.cloudfront.net",
       ],
       methods: ["GET", "POST"],
     },

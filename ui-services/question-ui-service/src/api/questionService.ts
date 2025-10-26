@@ -1,9 +1,7 @@
 import type { QuestionPreview } from "@/types/QuestionPreview";
-
+const isDev = import.meta.env.VITE_MODE === "dev";
 const API_URI =
-  (import.meta.env.VITE_MODE == "dev"
-    ? "http://localhost:5275"
-    : "http://peerprep-question-service.ap-southeast-1.elasticbeanstalk.com") +
+  (isDev ? "http://localhost:5275" : "https://d2zqikej7k9p0j.cloudfront.net") +
   "/api/v1/question-service";
 const ADMIN_TOKEN = "I-love-irish-ice-cream";
 

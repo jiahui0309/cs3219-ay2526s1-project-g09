@@ -1,16 +1,14 @@
 import type { User } from "@/types/User";
-
-const BASE_URL =
-  (import.meta.env.VITE_MODE == "dev"
-    ? "http://localhost:5277"
-    : "http://peerprep-user-service.ap-southeast-1.elasticbeanstalk.com") +
+const isDev = import.meta.env.VITE_MODE === "dev";
+const USER_BASE_URL =
+  (isDev ? "http://localhost:5277" : "https://d2zqikej7k9p0j.cloudfront.net") +
   "/api/v1/user-service";
 
 let csrfToken: string | null = null;
 
 async function getCsrfToken(): Promise<string> {
   if (csrfToken) return csrfToken;
-  const res = await fetch(`${BASE_URL}/csrf-token`, {
+  const res = await fetch(`${USER_BASE_URL}/csrf-token`, {
     credentials: "include",
   });
   const data = await res.json();
@@ -38,7 +36,7 @@ async function request<T>(
     headers["X-CSRF-Token"] = token;
   }
 
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
+  const res = await fetch(`${USER_BASE_URL}${endpoint}`, {
     ...options,
     method,
     headers,

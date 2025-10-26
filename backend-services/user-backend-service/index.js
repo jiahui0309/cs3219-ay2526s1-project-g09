@@ -11,21 +11,16 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-const whitelist = [
-  "http://localhost:5173",
-  "http://localhost:5174",
-  "http://localhost:5175",
-  "http://localhost:5176",
-  "http://localhost:5177",
-  "http://localhost:5178",
-  "http://peerprep-ui-shell.s3-website-ap-southeast-1.amazonaws.com", //Prod
-];
-
+const whitelist = (process.env.CORS_WHITELIST || "http://localhost:5173")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter((origin) => origin.length > 0);
+console.log(whitelist);
 app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true); // allow non-browser requests (e.g. Postman)
-      if (whitelist.indexOf(origin) !== -1) {
+      if (whitelist.includes(origin)) {
         callback(null, true);
       } else {
         callback(new Error("Not allowed by CORS"));
@@ -55,8 +50,8 @@ if (enableCsrf) {
     csurf({
       cookie: {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "Lax",
+        secure: true,
+        sameSite: "none",
       },
     }),
   );
@@ -83,7 +78,12 @@ app.get("/", (req, res, next) => {
   next();
 });
 
+// health checks
 app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", service: "user-service" });
+});
+
+app.get("/api/v1/user-service/health", (req, res) => {
   res.status(200).json({ status: "ok", service: "user-service" });
 });
 

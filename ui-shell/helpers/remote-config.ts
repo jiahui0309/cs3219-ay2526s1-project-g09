@@ -26,22 +26,22 @@ export function getRemoteUrls(mode: string) {
   return {
     MATCHING_UI_URL: isDev
       ? "http://localhost:5174/assets/remoteEntry.js"
-      : "https://peerprep-matching-ui-service.s3-website-ap-southeast-1.amazonaws.com/assets/remoteEntry.js",
+      : "https://d3vouftvcku7ec.cloudfront.net/assets/remoteEntry.js",
 
     QUESTION_UI_URL: isDev
       ? "http://localhost:5175/assets/remoteEntry.js"
-      : "https://peerprep-question-ui-service.s3-website-ap-southeast-1.amazonaws.com/assets/remoteEntry.js",
+      : "https://d3w7371nu1m2u.cloudfront.net/assets/remoteEntry.js",
 
     COLLAB_UI_URL: isDev
       ? "http://localhost:5176/assets/remoteEntry.js"
-      : "https://peerprep-collab-ui-service.s3-website-ap-southeast-1.amazonaws.com/assets/remoteEntry.js",
+      : "https://d1cw3o03apjmyw.cloudfront.net/assets/remoteEntry.js",
 
     USER_UI_URL: isDev
       ? "http://localhost:5177/assets/remoteEntry.js"
-      : "https://peerprep-user-ui-service.s3.ap-southeast-1.amazonaws.com/assets/remoteEntry.js",
+      : "https://d2chz5pzw95mur.cloudfront.net/assets/remoteEntry.js",
 
     HISTORY_UI_URL: isDev
       ? "http://localhost:5178/assets/remoteEntry.js"
-      : "https://peerprep-history-ui-service.s3-website-ap-southeast-1.amazonaws.com/assets/remoteEntry.js",
+      : "https://d31m4d8tgmufzp.cloudfront.net/assets/remoteEntry.js",
   };
 }

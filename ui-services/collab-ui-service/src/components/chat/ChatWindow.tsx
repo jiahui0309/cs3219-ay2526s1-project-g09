@@ -6,25 +6,14 @@ import ChatMessage from "./ChatMessage";
 import { io, Socket } from "socket.io-client";
 import type { User } from "@/types/User";
 import { useCollabSession } from "@/context/CollabSessionHook";
+import {
+  CHAT_URL,
+  type MessagePayload,
+  type SystemMessagePayload,
+} from "@/api/chatService";
 
-const CHAT_URL =
-  import.meta.env.VITE_MODE == "dev"
-    ? "http://localhost:5286"
-    : "http://peerprep-chat-service.ap-southeast-1.elasticbeanstalk.com";
 interface ChatWindowProps {
   user?: User | null;
-}
-
-interface MessagePayload {
-  senderId: string;
-  text: string;
-}
-
-interface SystemMessagePayload {
-  event: string;
-  userId: string;
-  username: string;
-  text: string;
 }
 
 const ChatWindow: React.FC<ChatWindowProps> = ({ user }) => {
@@ -65,7 +54,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ user }) => {
     }
     if (!session?.sessionId || !user?.id || !user?.username) return;
 
-    const socket = io(CHAT_URL, { reconnection: true });
+    const socket = io(CHAT_URL, {
+      path: "/api/v1/chat-service/socket.io",
+      transports: ["websocket"],
+      reconnection: true,
+    });
+
     socketRef.current = socket;
 
     socket.on("connect", () => {

@@ -9,7 +9,7 @@ const server = http.createServer(app);
 async function start() {
   initSocket(server);
   server.listen(PORT);
-  console.log("User service server listening on http://localhost:" + PORT);
+  console.log("User service server listening on port:" + PORT);
 }
 
 start();

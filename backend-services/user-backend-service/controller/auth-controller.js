@@ -61,7 +61,8 @@ export async function handleLogin(req, res) {
     res.cookie("authToken", accessToken, {
       httpOnly: true,
       secure: isProd, // HTTPS in prod
-      sameSite: isProd ? "None" : "Lax", // None in prod, Lax in dev
+      sameSite: isProd ? "none" : "lax", // None in prod, Lax in dev
+      partitioned: true,
       path: "/",
       ...(rememberMe ? { maxAge: 24 * 60 * 60 * 1000 } : {}), // 1 day
     });
@@ -160,7 +161,8 @@ export async function verifyOTP(req, res) {
     res.cookie("authToken", accessToken, {
       httpOnly: true,
       secure: isProd, // HTTPS in prod
-      sameSite: isProd ? "None" : "Lax", // None in prod, Lax in dev
+      sameSite: isProd ? "none" : "lax", // None in prod, Lax in dev
+      partitioned: true,
       path: "/",
     });
 
