@@ -20,18 +20,6 @@ interface LocationState {
   entry?: HistorySnapshot | Record<string, unknown>;
 }
 
-type RemoteSavedCodePanelProps = {
-  code: string;
-  onCodeChange?: (value: string | undefined) => void;
-  language?: string;
-  loading?: boolean;
-  error?: string | null;
-  isSaving?: boolean;
-  saveError?: string | null;
-  hasSnapshot?: boolean;
-  title?: string;
-};
-
 const HistoryAttemptPage: React.FC = () => {
   const navigate = useNavigate();
   const { historyId } = useParams<{ historyId: string }>();
@@ -54,7 +42,6 @@ const HistoryAttemptPage: React.FC = () => {
   );
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const saveAbortController = useRef<AbortController | null>(null);
   const entryRef = useRef<HistorySnapshot | null>(initialEntry);
 
   useEffect(() => {
@@ -93,23 +80,53 @@ const HistoryAttemptPage: React.FC = () => {
   }, [entry, historyId]);
 
   useEffect(() => {
-    setCodeDraft(entry?.code ?? "");
-    setLastSavedCode(entry?.code ?? "");
+    if (!entry) {
+      setCodeDraft("");
+      setLastSavedCode("");
+      entryRef.current = null;
+      return;
+    }
+
+    setCodeDraft(entry.code ?? "");
+    setLastSavedCode(entry.code ?? "");
     entryRef.current = entry;
   }, [entry]);
 
-  const handleCodeChange = useCallback(
-    (value: string | undefined) => {
-      const nextValue = value ?? "";
-      setCodeDraft(nextValue);
-      setEntry((current) => {
-        const nextEntry = current ? { ...current, code: nextValue } : current;
-        entryRef.current = nextEntry;
-        return nextEntry;
-      });
-      setSaveError(null);
-    },
-    [setEntry],
+  const handleCodeChange = useCallback((value?: string) => {
+    const nextValue = value ?? "";
+    setCodeDraft(nextValue);
+    if (entryRef.current) entryRef.current.code = nextValue;
+    setSaveError(null);
+  }, []);
+
+  const loadSavedCodePanel = useMemo(
+    () => () => import("historyUiService/SavedCodePanel"),
+    [],
+  );
+
+  const savedCodePanelProps = useMemo(
+    () => ({
+      code: codeDraft,
+      onCodeChange: handleCodeChange,
+      language: entry?.language,
+      loading,
+      error,
+      isSaving,
+      saveError,
+      hasSnapshot: Boolean(entry),
+      title: "Saved Code",
+      hasUnsavedChanges: codeDraft !== lastSavedCode,
+    }),
+    [
+      codeDraft,
+      handleCodeChange,
+      loading,
+      error,
+      isSaving,
+      saveError,
+      entry,
+      lastSavedCode,
+    ],
   );
 
   const persistCode = useCallback(async (): Promise<HistorySnapshot | null> => {
@@ -134,20 +151,12 @@ const HistoryAttemptPage: React.FC = () => {
       return null;
     }
 
-    saveAbortController.current?.abort();
-    const controller = new AbortController();
-    saveAbortController.current = controller;
-
     try {
       setIsSaving(true);
-      const updated = await updateHistorySnapshot(
-        entry.id,
-        {
-          code: codeDraft,
-          language: entry.language,
-        },
-        controller.signal,
-      );
+      const updated = await updateHistorySnapshot(entry.id, {
+        code: codeDraft,
+        language: entry.language,
+      });
       setEntry(updated);
       setCodeDraft(updated.code ?? codeDraft);
       setLastSavedCode(updated.code ?? codeDraft);
@@ -155,46 +164,14 @@ const HistoryAttemptPage: React.FC = () => {
       setSaveError(null);
       return updated;
     } catch (err) {
-      if ((err as Error)?.name === "AbortError") {
-        return null;
-      }
       setSaveError(
         err instanceof Error ? err.message : "Failed to save code snapshot",
       );
       return null;
     } finally {
-      if (saveAbortController.current === controller) {
-        saveAbortController.current = null;
-      }
       setIsSaving(false);
     }
   }, [codeDraft, entry, lastSavedCode]);
-
-  useEffect(() => {
-    if (!entry?.id) {
-      return;
-    }
-    if (codeDraft === lastSavedCode) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      void persistCode();
-    }, 1000);
-
-    return () => {
-      window.clearTimeout(timeout);
-    };
-  }, [codeDraft, entry?.id, lastSavedCode, persistCode]);
-
-  useEffect(() => {
-    return () => {
-      saveAbortController.current?.abort();
-      if (entry?.id && codeDraft !== lastSavedCode) {
-        void persistCode();
-      }
-    };
-  }, [codeDraft, entry?.id, lastSavedCode, persistCode]);
 
   const handleBack = () => {
     const currentEntry = entryRef.current;
@@ -239,22 +216,12 @@ const HistoryAttemptPage: React.FC = () => {
         </div>
 
         <div className="flex flex-1 flex-col">
-          <RemoteWrapper<RemoteSavedCodePanelProps>
-            remote={() => import("historyUiService/SavedCodePanel")}
+          <RemoteWrapper
+            remote={loadSavedCodePanel}
             remoteName="History UI Service"
             loadingMessage="Loading saved code…"
             errorMessage="Saved code panel unavailable."
-            remoteProps={{
-              code: codeDraft,
-              onCodeChange: handleCodeChange,
-              language: entry?.language,
-              loading,
-              error,
-              isSaving,
-              saveError,
-              hasSnapshot: Boolean(entry),
-              title: "Saved Code",
-            }}
+            remoteProps={savedCodePanelProps}
           />
         </div>
       </div>
