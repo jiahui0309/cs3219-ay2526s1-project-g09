@@ -14,7 +14,6 @@ import MatchingPage from "@/pages/matching/MatchingPage";
 import SessionPage from "@pages/collab/SessionPage";
 
 import HistoryPage from "@pages/history/HistoryPage";
-import AttemptPage from "@pages/history/AttemptPage";
 import HistoryDetailPage from "@pages/history/HistoryDetailPage";
 import HistoryAttemptPage from "@pages/history/HistoryAttemptPage";
 
@@ -67,7 +66,6 @@ export default function App() {
           path="/history/:historyId/attempt"
           element={<HistoryAttemptPage />}
         />
-        <Route path="/attempt" element={<AttemptPage />} />
         <Route path="/settings" element={<UserProfilePage />} />
       </Route>
       <Route element={<AdminRoute />}>
