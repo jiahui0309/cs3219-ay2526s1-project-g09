@@ -3,30 +3,13 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Layout from "@components/layout/BlueBgLayout";
 import NavHeader from "@components/common/NavHeader";
 import type { HistorySnapshot } from "@/types/history";
+import { RemoteWrapper } from "@/components/mfe/RemoteWrapper";
 import type { Attempt } from "@/types/Attempt";
 import type { Question } from "@/types/Question";
 import {
   fetchHistorySnapshot,
   normaliseHistorySnapshot,
 } from "@/api/historyService";
-
-const QuestionDisplay = React.lazy(async () => {
-  try {
-    return await import("questionUiService/QuestionDisplay");
-  } catch (error) {
-    console.warn(
-      "[history-shell] Failed to load question display remote",
-      error,
-    );
-    return {
-      default: () => (
-        <div className="rounded-lg border border-red-800 bg-red-950/30 p-4 text-sm text-red-300">
-          Question display service is unavailable.
-        </div>
-      ),
-    };
-  }
-});
 
 interface LocationState {
   entry?: HistorySnapshot | Record<string, unknown>;
@@ -159,7 +142,7 @@ const HistoryDetailPage: React.FC = () => {
   };
 
   const handleBack = () => {
-    navigate(-1);
+    navigate(`/history`);
   };
 
   return (
@@ -181,30 +164,14 @@ const HistoryDetailPage: React.FC = () => {
             )}
           </div>
 
-          <div className="flex-1 overflow-hidden rounded-lg">
-            {loading ? (
-              <div className="flex h-full items-center justify-center text-slate-400">
-                Loading question…
-              </div>
-            ) : error ? (
-              <div className="flex h-full items-center justify-center px-4 text-center text-sm text-red-400">
-                {error}
-              </div>
-            ) : entry ? (
-              <Suspense
-                fallback={
-                  <div className="flex h-full items-center justify-center text-slate-400">
-                    Loading question…
-                  </div>
-                }
-              >
-                <QuestionDisplay questionId={entry.questionId} />
-              </Suspense>
-            ) : (
-              <div className="flex h-full items-center justify-center text-slate-400">
-                No snapshot selected.
-              </div>
-            )}
+          <div className="h-[40vh] overflow-y-auto">
+            <RemoteWrapper
+              remote={() => import("questionUiService/QuestionDisplay")}
+              remoteName="Question UI Service"
+              remoteProps={entry ? { questionId: entry.questionId } : undefined}
+              loadingMessage="Loading Question..."
+              errorMessage="Question Display service unavailable"
+            />
           </div>
         </div>
 

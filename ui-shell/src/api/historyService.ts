@@ -147,4 +147,53 @@ export async function fetchHistorySnapshot(
   return normalised;
 }
 
+export interface UpdateHistorySnapshotPayload {
+  code?: string;
+  language?: string;
+  sessionEndedAt?: string | number | Date | null;
+  metadata?: Record<string, unknown>;
+}
+
+export async function updateHistorySnapshot(
+  id: string,
+  payload: UpdateHistorySnapshotPayload,
+  signal?: AbortSignal,
+): Promise<HistorySnapshot> {
+  const response = await fetch(
+    `${HISTORY_SERVICE_BASE_URL}/history/${encodeURIComponent(id)}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal,
+    },
+  );
+
+  if (!response.ok) {
+    let message: string | undefined;
+    try {
+      const data = await response.json();
+      message = data?.error;
+    } catch {
+      message = await response.text().catch(() => undefined);
+    }
+    throw new Error(
+      message ||
+        `History update failed (${response.status}): ${response.statusText}`,
+    );
+  }
+
+  const data = await response.json();
+  if (!data || data.success === false || !data.snapshot) {
+    throw new Error(data?.error ?? "History snapshot update failed");
+  }
+
+  const normalised = normaliseHistorySnapshot(data.snapshot);
+  if (!normalised) {
+    throw new Error("Received invalid history snapshot");
+  }
+
+  return normalised;
+}
+
 export { HISTORY_SERVICE_BASE_URL };

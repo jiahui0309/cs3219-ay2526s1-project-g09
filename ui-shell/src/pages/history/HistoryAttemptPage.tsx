@@ -1,30 +1,21 @@
-import React, { Suspense, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { RemoteWrapper } from "@/components/mfe/RemoteWrapper";
 import Layout from "@components/layout/BlueBgLayout";
 import NavHeader from "@components/common/NavHeader";
 import type { HistorySnapshot } from "@/types/history";
 import {
   fetchHistorySnapshot,
   normaliseHistorySnapshot,
+  updateHistorySnapshot,
 } from "@/api/historyService";
-
-const QuestionDisplay = React.lazy(async () => {
-  try {
-    return await import("questionUiService/QuestionDisplay");
-  } catch (error) {
-    console.warn(
-      "[history-shell] Failed to load question display remote",
-      error,
-    );
-    return {
-      default: () => (
-        <div className="rounded-lg border border-red-800 bg-red-950/30 p-4 text-sm text-red-300">
-          Question display service is unavailable.
-        </div>
-      ),
-    };
-  }
-});
+import Editor from "@monaco-editor/react";
 
 interface LocationState {
   entry?: HistorySnapshot | Record<string, unknown>;
@@ -46,6 +37,18 @@ const HistoryAttemptPage: React.FC = () => {
   const [entry, setEntry] = useState<HistorySnapshot | null>(initialEntry);
   const [loading, setLoading] = useState(!initialEntry);
   const [error, setError] = useState<string | null>(null);
+  const [codeDraft, setCodeDraft] = useState<string>(initialEntry?.code ?? "");
+  const [lastSavedCode, setLastSavedCode] = useState<string>(
+    initialEntry?.code ?? "",
+  );
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const saveAbortController = useRef<AbortController | null>(null);
+  const entryRef = useRef<HistorySnapshot | null>(initialEntry);
+
+  useEffect(() => {
+    entryRef.current = entry;
+  }, [entry]);
 
   useEffect(() => {
     if (entry || !historyId) {
@@ -57,6 +60,9 @@ const HistoryAttemptPage: React.FC = () => {
     fetchHistorySnapshot(historyId, controller.signal)
       .then((snapshot) => {
         setEntry(snapshot);
+        setCodeDraft(snapshot?.code ?? "");
+        setLastSavedCode(snapshot?.code ?? "");
+        entryRef.current = snapshot;
         setError(null);
       })
       .catch((err) => {
@@ -75,8 +81,125 @@ const HistoryAttemptPage: React.FC = () => {
     return () => controller.abort();
   }, [entry, historyId]);
 
+  useEffect(() => {
+    setCodeDraft(entry?.code ?? "");
+    setLastSavedCode(entry?.code ?? "");
+    entryRef.current = entry;
+  }, [entry]);
+
+  const handleCodeChange = useCallback(
+    (value: string | undefined) => {
+      const nextValue = value ?? "";
+      setCodeDraft(nextValue);
+      setEntry((current) => {
+        const nextEntry = current ? { ...current, code: nextValue } : current;
+        entryRef.current = nextEntry;
+        return nextEntry;
+      });
+      setSaveError(null);
+    },
+    [setEntry],
+  );
+
+  const persistCode = useCallback(async (): Promise<HistorySnapshot | null> => {
+    if (!entry?.id) {
+      return null;
+    }
+    if (codeDraft === lastSavedCode) {
+      return entry;
+    }
+
+    const trimmed = codeDraft.trim();
+    if (trimmed.length === 0) {
+      setSaveError("Code cannot be empty.");
+      setCodeDraft(lastSavedCode);
+      setEntry((current) => {
+        const nextEntry = current
+          ? { ...current, code: lastSavedCode }
+          : current;
+        entryRef.current = nextEntry;
+        return nextEntry;
+      });
+      return null;
+    }
+
+    saveAbortController.current?.abort();
+    const controller = new AbortController();
+    saveAbortController.current = controller;
+
+    try {
+      setIsSaving(true);
+      const updated = await updateHistorySnapshot(
+        entry.id,
+        {
+          code: codeDraft,
+          language: entry.language,
+        },
+        controller.signal,
+      );
+      setEntry(updated);
+      setCodeDraft(updated.code ?? codeDraft);
+      setLastSavedCode(updated.code ?? codeDraft);
+      entryRef.current = updated;
+      setSaveError(null);
+      return updated;
+    } catch (err) {
+      if ((err as Error)?.name === "AbortError") {
+        return null;
+      }
+      setSaveError(
+        err instanceof Error ? err.message : "Failed to save code snapshot",
+      );
+      return null;
+    } finally {
+      if (saveAbortController.current === controller) {
+        saveAbortController.current = null;
+      }
+      setIsSaving(false);
+    }
+  }, [codeDraft, entry, lastSavedCode]);
+
+  useEffect(() => {
+    if (!entry?.id) {
+      return;
+    }
+    if (codeDraft === lastSavedCode) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      void persistCode();
+    }, 1000);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [codeDraft, entry?.id, lastSavedCode, persistCode]);
+
+  useEffect(() => {
+    return () => {
+      saveAbortController.current?.abort();
+      if (entry?.id && codeDraft !== lastSavedCode) {
+        void persistCode();
+      }
+    };
+  }, [codeDraft, entry?.id, lastSavedCode, persistCode]);
+
   const handleBack = () => {
-    navigate(-1);
+    const currentEntry = entryRef.current;
+    if (!currentEntry?.id) {
+      navigate(-1);
+      return;
+    }
+
+    void (async () => {
+      const latest = await persistCode();
+      const snapshot = latest ?? entryRef.current ?? currentEntry;
+      navigate(`/history/${snapshot.id}`, {
+        replace: true,
+        state: { entry: snapshot },
+      });
+    })();
   };
 
   return (
@@ -98,93 +221,31 @@ const HistoryAttemptPage: React.FC = () => {
             )}
           </div>
 
-          <div className="flex-1 overflow-hidden rounded-lg">
-            {loading ? (
-              <div className="flex h-full items-center justify-center text-slate-400">
-                Loading question…
-              </div>
-            ) : error ? (
-              <div className="flex h-full items-center justify-center px-4 text-center text-sm text-red-400">
-                {error}
-              </div>
-            ) : entry ? (
-              <Suspense
-                fallback={
-                  <div className="flex h-full items-center justify-center text-slate-400">
-                    Loading question…
-                  </div>
-                }
-              >
-                <QuestionDisplay questionId={entry.questionId} />
-              </Suspense>
-            ) : (
-              <div className="flex h-full items-center justify-center text-slate-400">
-                No snapshot selected.
-              </div>
-            )}
+          <div className="h-[40vh] overflow-y-auto">
+            <RemoteWrapper
+              remote={() => import("questionUiService/QuestionDisplay")}
+              remoteName="Question UI Service"
+              remoteProps={entry ? { questionId: entry.questionId } : undefined}
+              loadingMessage="Loading Question..."
+              errorMessage="Question Display service unavailable"
+            />
           </div>
-
-          <SnapshotDetails entry={entry} loading={loading} />
         </div>
 
         <div className="flex flex-1 flex-col gap-4">
-          <SavedCodePanel entry={entry} loading={loading} error={error} />
-          <ParticipantsPanel entry={entry} loading={loading} />
+          <SavedCodePanel
+            entry={entry}
+            loading={loading}
+            error={error}
+            code={codeDraft}
+            language={entry?.language}
+            onCodeChange={handleCodeChange}
+            isSaving={isSaving}
+            saveError={saveError}
+          />
         </div>
       </div>
     </Layout>
-  );
-};
-
-interface SnapshotDetailsProps {
-  entry: HistorySnapshot | null;
-  loading: boolean;
-}
-
-const SnapshotDetails: React.FC<SnapshotDetailsProps> = ({
-  entry,
-  loading,
-}) => {
-  if (loading) {
-    return (
-      <div className="flex h-[32vh] items-center justify-center rounded-lg border border-slate-800 bg-slate-900/70 text-slate-400">
-        Loading snapshot details…
-      </div>
-    );
-  }
-
-  if (!entry) {
-    return (
-      <div className="flex h-[32vh] items-center justify-center rounded-lg border border-slate-800 bg-slate-900/70 text-slate-400">
-        Select a history record to view details.
-      </div>
-    );
-  }
-
-  const sessionEnded = entry.sessionEndedAt
-    ? entry.sessionEndedAt.toLocaleString()
-    : "Unknown";
-  const timeLimit =
-    typeof entry.timeLimit === "number" ? `${entry.timeLimit} min` : "—";
-
-  return (
-    <div className=" h-[32vh] overflow-hidden rounded-lg border border-slate-800 bg-slate-900/70 p-4 text-sm text-slate-200">
-      <h3 className="text-base font-semibold text-orange-300">
-        Snapshot Details
-      </h3>
-      <dl className="mt-3 grid grid-cols-1 gap-2 text-slate-300">
-        <DetailRow label="Question" value={entry.questionTitle || "Untitled"} />
-        <DetailRow label="Difficulty" value={entry.difficulty ?? "—"} />
-        <DetailRow label="Time Limit" value={timeLimit} />
-        <DetailRow
-          label="Language"
-          value={(entry.language ?? "Unknown").toUpperCase()}
-        />
-        <DetailRow label="Session ID" value={entry.sessionId} />
-        <DetailRow label="Snapshot Owner" value={entry.userId} />
-        <DetailRow label="Session Ended" value={sessionEnded} />
-      </dl>
-    </div>
   );
 };
 
@@ -192,80 +253,115 @@ interface SavedCodePanelProps {
   entry: HistorySnapshot | null;
   loading: boolean;
   error: string | null;
+  code: string;
+  onCodeChange: (value: string | undefined) => void;
+  language?: string;
+  isSaving: boolean;
+  saveError: string | null;
 }
 
 const SavedCodePanel: React.FC<SavedCodePanelProps> = ({
   entry,
   loading,
   error,
+  code,
+  onCodeChange,
+  language,
+  isSaving,
+  saveError,
 }) => {
+  const editorLanguage = useMemo(() => {
+    if (!language) {
+      return "plaintext";
+    }
+    const normalized = language.trim().toLowerCase();
+    const languageMap: Record<string, string> = {
+      js: "javascript",
+      javascript: "javascript",
+      ts: "typescript",
+      typescript: "typescript",
+      py: "python",
+      python: "python",
+      c: "c",
+      cpp: "cpp",
+      "c++": "cpp",
+      java: "java",
+      go: "go",
+      rust: "rust",
+    };
+    return languageMap[normalized] ?? normalized;
+  }, [language]);
+
+  let content: React.ReactNode;
+  if (loading) {
+    content = (
+      <div className="flex h-full items-center justify-center text-slate-400">
+        Loading saved code…
+      </div>
+    );
+  } else if (error) {
+    content = (
+      <div className="flex h-full items-center justify-center text-red-400">
+        {error}
+      </div>
+    );
+  } else if (!entry) {
+    content = (
+      <div className="flex h-full items-center justify-center text-slate-400">
+        Select a snapshot to view code.
+      </div>
+    );
+  } else {
+    content = (
+      <Editor
+        value={code}
+        onChange={onCodeChange}
+        language={editorLanguage}
+        theme="vs-dark"
+        options={{
+          automaticLayout: true,
+          minimap: { enabled: false },
+          scrollBeyondLastLine: false,
+          readOnly: false,
+          wordWrap: "on",
+          fontSize: 14,
+        }}
+        height="100%"
+      />
+    );
+  }
+
+  const statusMessage = (() => {
+    if (loading) {
+      return "Loading…";
+    }
+    if (!entry) {
+      return "No snapshot selected.";
+    }
+    if (saveError) {
+      return saveError;
+    }
+    if (isSaving) {
+      return "Saving changes…";
+    }
+    return "All changes saved.";
+  })();
+
   return (
     <div className="flex h-[55%] flex-col overflow-hidden rounded-lg border border-slate-800 bg-slate-900/70">
       <div className="border-b border-slate-800 bg-slate-950/80 px-4 py-3 text-sm font-semibold uppercase tracking-widest text-slate-400">
         Saved Code
       </div>
-      <div className="flex-1 overflow-auto px-4 py-3 text-xs text-slate-200">
-        {loading ? (
-          <span className="text-slate-400">Loading saved code…</span>
-        ) : error ? (
-          <span className="text-red-400">{error}</span>
-        ) : entry ? (
-          entry.code && entry.code.trim().length > 0 ? (
-            <pre className="whitespace-pre-wrap">{entry.code}</pre>
-          ) : (
-            <span className="text-slate-400">No code snapshot recorded.</span>
-          )
+      <div className="flex-1 overflow-hidden">{content}</div>
+      <div className="border-t border-slate-800 bg-slate-950/60 px-4 py-2 text-xs text-slate-400">
+        {saveError ? (
+          <span className="text-red-400">{statusMessage}</span>
         ) : (
-          <span className="text-slate-400">
-            Select a snapshot to view code.
-          </span>
+          statusMessage
         )}
       </div>
     </div>
   );
 };
-
-interface ParticipantsPanelProps {
-  entry: HistorySnapshot | null;
-  loading: boolean;
-}
-
-const ParticipantsPanel: React.FC<ParticipantsPanelProps> = ({
-  entry,
-  loading,
-}) => {
-  const participants = entry?.participants ?? [];
-
-  return (
-    <div className="flex h-[45%] flex-col overflow-hidden rounded-lg border border-slate-800 bg-slate-900/70">
-      <div className="border-b border-slate-800 bg-slate-950/80 px-4 py-3 text-sm font-semibold uppercase tracking-widest text-slate-400">
-        Participants
-      </div>
-      <div className="flex-1 overflow-auto px-4 py-3 text-sm text-slate-200">
-        {loading ? (
-          <span className="text-slate-400">Loading participants…</span>
-        ) : participants.length === 0 ? (
-          <span className="text-slate-400">No participants recorded.</span>
-        ) : (
-          <ul className="list-disc pl-5">
-            {participants.map((participant) => (
-              <li key={participant}>{participant}</li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const DetailRow: React.FC<{ label: string; value: string }> = ({
-  label,
-  value,
-}) => (
-  <div className="grid grid-cols-[140px_1fr] gap-2">
-    <dt className="text-slate-400">{label}</dt>
-    <dd className="text-slate-200">{value}</dd>
-  </div>
-);
 
 export default HistoryAttemptPage;
