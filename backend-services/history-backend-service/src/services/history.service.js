@@ -160,4 +160,72 @@ export default class HistoryService {
 
     return { items, total, limit, skip };
   }
+
+  static async updateSnapshot(id, payload = {}) {
+    if (!id) {
+      const error = new Error("History id is required");
+      error.status = 400;
+      throw error;
+    }
+
+    const update = {};
+
+    if (payload.code !== undefined) {
+      if (
+        typeof payload.code !== "string" ||
+        payload.code.trim().length === 0
+      ) {
+        const error = new Error("code must be a non-empty string");
+        error.status = 400;
+        throw error;
+      }
+      update.code = payload.code;
+    }
+
+    if (payload.language !== undefined) {
+      const language = sanitiseString(payload.language);
+      if (!language) {
+        const error = new Error("language must be a non-empty string");
+        error.status = 400;
+        throw error;
+      }
+      update.language = language.toLowerCase();
+    }
+
+    if (payload.sessionEndedAt !== undefined) {
+      const date = payload.sessionEndedAt
+        ? new Date(payload.sessionEndedAt)
+        : null;
+      if (date && Number.isNaN(date.getTime())) {
+        const error = new Error("sessionEndedAt must be a valid date");
+        error.status = 400;
+        throw error;
+      }
+      update.sessionEndedAt = date ?? undefined;
+    }
+
+    if (payload.metadata !== undefined) {
+      update.metadata = payload.metadata;
+    }
+
+    if (Object.keys(update).length === 0) {
+      const error = new Error("No updatable fields provided");
+      error.status = 400;
+      throw error;
+    }
+
+    const updated = await SessionHistory.findByIdAndUpdate(
+      id,
+      { $set: update },
+      { new: true, runValidators: true },
+    ).lean();
+
+    if (!updated) {
+      const error = new Error("History snapshot not found");
+      error.status = 404;
+      throw error;
+    }
+
+    return updated;
+  }
 }

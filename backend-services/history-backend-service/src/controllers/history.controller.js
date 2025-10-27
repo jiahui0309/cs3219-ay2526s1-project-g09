@@ -14,6 +14,29 @@ export const createHistorySnapshot = async (req, res) => {
   }
 };
 
+export const updateHistorySnapshot = async (req, res) => {
+  try {
+    const { id } = req.params ?? {};
+    if (!id) {
+      return res
+        .status(400)
+        .json({ success: false, error: "History id is required" });
+    }
+
+    console.log("[history.controller] PATCH /history/:id", id, req.body);
+    const snapshot = await HistoryService.updateSnapshot(id, req.body ?? {});
+    res.json({ success: true, snapshot });
+  } catch (error) {
+    const status =
+      error.status && Number.isInteger(error.status) ? error.status : 500;
+    console.error("[history.controller] Failed to update snapshot", error);
+    res.status(status).json({
+      success: false,
+      error: error.message ?? "Failed to update history snapshot",
+    });
+  }
+};
+
 export const listHistorySnapshots = async (req, res) => {
   try {
     console.log("[history.controller] GET /history query", req.query);

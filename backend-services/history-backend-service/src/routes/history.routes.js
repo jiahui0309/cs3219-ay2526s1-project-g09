@@ -3,6 +3,7 @@ import {
   createHistorySnapshot,
   getHistorySnapshot,
   listHistorySnapshots,
+  updateHistorySnapshot,
 } from "../controllers/history.controller.js";
 
 const router = Router();
@@ -10,5 +11,6 @@ const router = Router();
 router.get("/history", listHistorySnapshots);
 router.get("/history/:id", getHistorySnapshot);
 router.post("/history", createHistorySnapshot);
+router.patch("/history/:id", updateHistorySnapshot);
 
 export default router;
