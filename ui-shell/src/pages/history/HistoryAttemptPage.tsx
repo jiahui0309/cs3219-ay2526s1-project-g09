@@ -15,11 +15,22 @@ import {
   normaliseHistorySnapshot,
   updateHistorySnapshot,
 } from "@/api/historyService";
-import Editor from "@monaco-editor/react";
 
 interface LocationState {
   entry?: HistorySnapshot | Record<string, unknown>;
 }
+
+type RemoteSavedCodePanelProps = {
+  code: string;
+  onCodeChange?: (value: string | undefined) => void;
+  language?: string;
+  loading?: boolean;
+  error?: string | null;
+  isSaving?: boolean;
+  saveError?: string | null;
+  hasSnapshot?: boolean;
+  title?: string;
+};
 
 const HistoryAttemptPage: React.FC = () => {
   const navigate = useNavigate();
@@ -214,11 +225,6 @@ const HistoryAttemptPage: React.FC = () => {
             >
               ← Back
             </button>
-            {entry?.savedBy && (
-              <span className="text-xs text-slate-400">
-                Saved by {entry.savedBy}
-              </span>
-            )}
           </div>
 
           <div className="h-[40vh] overflow-y-auto">
@@ -232,136 +238,27 @@ const HistoryAttemptPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col gap-4">
-          <SavedCodePanel
-            entry={entry}
-            loading={loading}
-            error={error}
-            code={codeDraft}
-            language={entry?.language}
-            onCodeChange={handleCodeChange}
-            isSaving={isSaving}
-            saveError={saveError}
+        <div className="flex flex-1 flex-col">
+          <RemoteWrapper<RemoteSavedCodePanelProps>
+            remote={() => import("historyUiService/SavedCodePanel")}
+            remoteName="History UI Service"
+            loadingMessage="Loading saved code…"
+            errorMessage="Saved code panel unavailable."
+            remoteProps={{
+              code: codeDraft,
+              onCodeChange: handleCodeChange,
+              language: entry?.language,
+              loading,
+              error,
+              isSaving,
+              saveError,
+              hasSnapshot: Boolean(entry),
+              title: "Saved Code",
+            }}
           />
         </div>
       </div>
     </Layout>
   );
 };
-
-interface SavedCodePanelProps {
-  entry: HistorySnapshot | null;
-  loading: boolean;
-  error: string | null;
-  code: string;
-  onCodeChange: (value: string | undefined) => void;
-  language?: string;
-  isSaving: boolean;
-  saveError: string | null;
-}
-
-const SavedCodePanel: React.FC<SavedCodePanelProps> = ({
-  entry,
-  loading,
-  error,
-  code,
-  onCodeChange,
-  language,
-  isSaving,
-  saveError,
-}) => {
-  const editorLanguage = useMemo(() => {
-    if (!language) {
-      return "plaintext";
-    }
-    const normalized = language.trim().toLowerCase();
-    const languageMap: Record<string, string> = {
-      js: "javascript",
-      javascript: "javascript",
-      ts: "typescript",
-      typescript: "typescript",
-      py: "python",
-      python: "python",
-      c: "c",
-      cpp: "cpp",
-      "c++": "cpp",
-      java: "java",
-      go: "go",
-      rust: "rust",
-    };
-    return languageMap[normalized] ?? normalized;
-  }, [language]);
-
-  let content: React.ReactNode;
-  if (loading) {
-    content = (
-      <div className="flex h-full items-center justify-center text-slate-400">
-        Loading saved code…
-      </div>
-    );
-  } else if (error) {
-    content = (
-      <div className="flex h-full items-center justify-center text-red-400">
-        {error}
-      </div>
-    );
-  } else if (!entry) {
-    content = (
-      <div className="flex h-full items-center justify-center text-slate-400">
-        Select a snapshot to view code.
-      </div>
-    );
-  } else {
-    content = (
-      <Editor
-        value={code}
-        onChange={onCodeChange}
-        language={editorLanguage}
-        theme="vs-dark"
-        options={{
-          automaticLayout: true,
-          minimap: { enabled: false },
-          scrollBeyondLastLine: false,
-          readOnly: false,
-          wordWrap: "on",
-          fontSize: 14,
-        }}
-        height="100%"
-      />
-    );
-  }
-
-  const statusMessage = (() => {
-    if (loading) {
-      return "Loading…";
-    }
-    if (!entry) {
-      return "No snapshot selected.";
-    }
-    if (saveError) {
-      return saveError;
-    }
-    if (isSaving) {
-      return "Saving changes…";
-    }
-    return "All changes saved.";
-  })();
-
-  return (
-    <div className="flex h-[55%] flex-col overflow-hidden rounded-lg border border-slate-800 bg-slate-900/70">
-      <div className="border-b border-slate-800 bg-slate-950/80 px-4 py-3 text-sm font-semibold uppercase tracking-widest text-slate-400">
-        Saved Code
-      </div>
-      <div className="flex-1 overflow-hidden">{content}</div>
-      <div className="border-t border-slate-800 bg-slate-950/60 px-4 py-2 text-xs text-slate-400">
-        {saveError ? (
-          <span className="text-red-400">{statusMessage}</span>
-        ) : (
-          statusMessage
-        )}
-      </div>
-    </div>
-  );
-};
-
 export default HistoryAttemptPage;

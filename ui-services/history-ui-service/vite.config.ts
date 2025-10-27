@@ -18,6 +18,7 @@ export default defineConfig({
         "./QuestionAttemptTable":
           "./src/components/AttemptTable/QuestionAttemptTable",
         "./NotesWindow": "./src/components/NotesWindow",
+        "./SavedCodePanel": "./src/components/SavedCodePanel",
         "./HistoryApp": "./src/App",
       },
       remotes: {
