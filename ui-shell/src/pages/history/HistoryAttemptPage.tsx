@@ -98,7 +98,7 @@ const HistoryAttemptPage: React.FC = () => {
             )}
           </div>
 
-          <div className="flex-1 overflow-hidden rounded-lg border border-slate-800 bg-slate-900/70">
+          <div className="flex-1 overflow-hidden rounded-lg">
             {loading ? (
               <div className="flex h-full items-center justify-center text-slate-400">
                 Loading question…

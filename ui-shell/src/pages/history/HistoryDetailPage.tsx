@@ -3,6 +3,8 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Layout from "@components/layout/BlueBgLayout";
 import NavHeader from "@components/common/NavHeader";
 import type { HistorySnapshot } from "@/types/history";
+import type { Attempt } from "@/types/Attempt";
+import type { Question } from "@/types/Question";
 import {
   fetchHistorySnapshot,
   normaliseHistorySnapshot,
@@ -30,12 +32,34 @@ interface LocationState {
   entry?: HistorySnapshot | Record<string, unknown>;
 }
 
-interface AttemptRow {
-  date: string;
-  time: string;
-  partner: string;
-  timeTaken: string;
-}
+type RemoteQuestionAttemptTableProps = {
+  items?: Attempt[];
+  isLoading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
+  onSelect?: (attempt: Attempt) => void;
+  title?: string;
+  emptyMessage?: string;
+  loadingMessage?: string;
+  listClassName?: string;
+};
+
+const QuestionAttemptTable = React.lazy(async () => {
+  try {
+    return await import("historyUiService/QuestionAttemptTable");
+  } catch (error) {
+    console.warn("[history-shell] Failed to load attempt table remote", error);
+    return {
+      default: ({
+        emptyMessage = "Attempt history unavailable.",
+      }: RemoteQuestionAttemptTableProps) => (
+        <div className="flex min-h-[12rem] items-center justify-center rounded-lg border border-slate-800 bg-slate-900/70 p-6 text-sm text-red-300">
+          {emptyMessage}
+        </div>
+      ),
+    };
+  }
+});
 
 const HistoryDetailPage: React.FC = () => {
   const navigate = useNavigate();
@@ -82,48 +106,55 @@ const HistoryDetailPage: React.FC = () => {
     return () => controller.abort();
   }, [entry, historyId]);
 
-  const attemptRows = useMemo<AttemptRow[]>(() => {
+  const attemptEntries = useMemo<Attempt[]>(() => {
     if (!entry) {
       return [];
     }
 
-    const date = entry.sessionEndedAt
-      ? entry.sessionEndedAt.toLocaleDateString(undefined, {
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-        })
-      : "—";
-    const time = entry.sessionEndedAt
-      ? entry.sessionEndedAt.toLocaleTimeString(undefined, {
-          hour12: false,
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        })
-      : "—";
+    const attemptTimestamp =
+      entry.sessionEndedAt ?? entry.updatedAt ?? entry.createdAt ?? new Date();
 
-    const timeTaken = formatDuration(entry.sessionEndedAt, entry.createdAt);
+    const timeTakenLabel = formatDuration(
+      entry.sessionEndedAt,
+      entry.createdAt,
+    );
+
+    const baseQuestion: Question = {
+      title: entry.questionTitle || "Untitled Question",
+      body: "",
+      topics: entry.topics ?? [],
+      hints: [],
+      answer: "",
+      difficulty: entry.difficulty ?? "Unknown",
+      timeLimit:
+        typeof entry.timeLimit === "number"
+          ? `${entry.timeLimit} min`
+          : (entry.timeLimit ?? "—"),
+    };
 
     const partners = entry.participants.filter(
       (participant) => participant !== entry.userId,
     );
     const targets = partners.length > 0 ? partners : [entry.userId];
 
-    return targets.map((partner) => ({
-      date,
-      time,
+    return targets.map((partner, index) => ({
+      id: `${entry.id}-${partner}-${index}`,
+      question: baseQuestion,
+      date: attemptTimestamp,
       partner,
-      timeTaken,
+      timeTaken: timeTakenLabel,
     }));
   }, [entry]);
 
-  const handleAttemptClick = (row: AttemptRow) => {
+  const handleAttemptSelect = (attempt: Attempt) => {
     if (!entry) {
       return;
     }
     navigate(`/history/${entry.id}/attempt`, {
-      state: { entry, attemptPartner: row.partner },
+      state: {
+        entry,
+        attemptPartner: attempt.partner ?? entry.userId,
+      },
     });
   };
 
@@ -150,7 +181,7 @@ const HistoryDetailPage: React.FC = () => {
             )}
           </div>
 
-          <div className="flex-1 overflow-hidden rounded-lg border border-slate-800 bg-slate-900/70">
+          <div className="flex-1 overflow-hidden rounded-lg">
             {loading ? (
               <div className="flex h-full items-center justify-center text-slate-400">
                 Loading question…
@@ -177,64 +208,24 @@ const HistoryDetailPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex w-1/2 flex-col rounded-lg border border-slate-800 bg-slate-900/70 p-6 shadow-lg shadow-slate-900/40">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-orange-300">
-              Attempt History
-            </h2>
-            <span className="text-xs text-slate-400">
-              {attemptRows.length} entr{attemptRows.length === 1 ? "y" : "ies"}
-            </span>
-          </div>
-
-          {loading ? (
-            <div className="flex flex-1 items-center justify-center text-slate-400">
-              Loading attempt history…
-            </div>
-          ) : error ? (
-            <div className="flex flex-1 items-center justify-center text-red-400">
-              {error}
-            </div>
-          ) : attemptRows.length === 0 ? (
-            <div className="flex flex-1 items-center justify-center text-slate-400">
-              No attempt history recorded.
-            </div>
-          ) : (
-            <div className="flex-1 overflow-auto">
-              <table className="min-w-full divide-y divide-slate-800 text-sm text-slate-200">
-                <thead className="bg-slate-900/80 text-xs uppercase tracking-wider text-slate-400">
-                  <tr>
-                    <th scope="col" className="px-4 py-3 text-left">
-                      Date
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-left">
-                      Time
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-left">
-                      Partner
-                    </th>
-                    <th scope="col" className="px-4 py-3 text-left">
-                      Time Taken
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {attemptRows.map((row, index) => (
-                    <tr
-                      key={`${row.partner}-${index}`}
-                      onClick={() => handleAttemptClick(row)}
-                      className="cursor-pointer bg-slate-900/70 transition-colors hover:bg-slate-800/70"
-                    >
-                      <td className="px-4 py-3 align-top">{row.date}</td>
-                      <td className="px-4 py-3 align-top">{row.time}</td>
-                      <td className="px-4 py-3 align-top">{row.partner}</td>
-                      <td className="px-4 py-3 align-top">{row.timeTaken}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+        <div className="flex w-1/2 flex-col">
+          <Suspense
+            fallback={
+              <div className="flex min-h-[24rem] items-center justify-center rounded-lg border border-slate-800 bg-slate-900/70 p-6 text-slate-400">
+                Loading attempt history…
+              </div>
+            }
+          >
+            <QuestionAttemptTable
+              items={attemptEntries}
+              isLoading={loading}
+              error={error}
+              emptyMessage="No attempt history recorded."
+              loadingMessage="Loading attempt history…"
+              onSelect={handleAttemptSelect}
+              listClassName="min-h-[24rem]"
+            />
+          </Suspense>
         </div>
       </div>
     </Layout>
