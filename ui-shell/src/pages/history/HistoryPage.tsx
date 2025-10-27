@@ -4,7 +4,10 @@ import NavHeader from "@components/common/NavHeader";
 import { useAuth } from "@/data/UserStore";
 import { useNavigate } from "react-router-dom";
 import { RemoteWrapper } from "@/components/mfe/RemoteWrapper";
-import { normaliseHistorySnapshot } from "@/api/historyService";
+import {
+  type HistorySnapshotInput,
+  normaliseHistorySnapshot,
+} from "@/api/historyService";
 
 const HistoryPage: React.FC = () => {
   const { user } = useAuth();
@@ -15,8 +18,8 @@ const HistoryPage: React.FC = () => {
       userId: user?.username,
       allowUserFilter: true,
       renderQuestionPanel: false,
-      onEntrySelect: (entry: unknown) => {
-        const snapshot = normaliseHistorySnapshot(entry as any);
+      onEntrySelect: (entry: HistorySnapshotInput) => {
+        const snapshot = normaliseHistorySnapshot(entry);
         if (snapshot) {
           navigate(`/history/${snapshot.id}`, { state: { entry: snapshot } });
         }

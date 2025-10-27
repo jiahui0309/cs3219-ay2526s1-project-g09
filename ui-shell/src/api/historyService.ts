@@ -13,6 +13,7 @@ interface HistorySnapshotPayload {
   id?: string;
   sessionId?: string;
   userId?: string;
+  questionId?: string;
   participants?: unknown;
   question?: {
     questionId?: string;
@@ -30,8 +31,15 @@ interface HistorySnapshotPayload {
   timeLimit?: number;
 }
 
+export type HistorySnapshotInput =
+  | HistorySnapshotPayload
+  | HistorySnapshot
+  | Record<string, unknown>
+  | null
+  | undefined;
+
 export function normaliseHistorySnapshot(
-  payload: HistorySnapshotPayload | HistorySnapshot | null | undefined,
+  payload: HistorySnapshotInput,
 ): HistorySnapshot | null {
   if (!payload || typeof payload !== "object") {
     return null;
@@ -78,9 +86,7 @@ export function normaliseHistorySnapshot(
   const sessionId = toString(value.sessionId) ?? "";
   const userId = toString(value.userId) ?? "";
   const questionId =
-    toString(value.question?.questionId) ??
-    toString((value as any).questionId) ??
-    "";
+    toString(value.question?.questionId ?? value.questionId) ?? "";
   const id = toString(value._id ?? value.id) ?? `${sessionId}:${userId}`;
 
   if (!id || !sessionId || !userId || !questionId) {
