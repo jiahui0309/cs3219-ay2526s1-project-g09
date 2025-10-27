@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Layout from "@components/layout/BlueBgLayout";
 import NavHeader from "@components/common/NavHeader";
@@ -26,23 +26,6 @@ type RemoteQuestionAttemptTableProps = {
   loadingMessage?: string;
   listClassName?: string;
 };
-
-const QuestionAttemptTable = React.lazy(async () => {
-  try {
-    return await import("historyUiService/QuestionAttemptTable");
-  } catch (error) {
-    console.warn("[history-shell] Failed to load attempt table remote", error);
-    return {
-      default: ({
-        emptyMessage = "Attempt history unavailable.",
-      }: RemoteQuestionAttemptTableProps) => (
-        <div className="flex min-h-[12rem] items-center justify-center rounded-lg border border-slate-800 bg-slate-900/70 p-6 text-sm text-red-300">
-          {emptyMessage}
-        </div>
-      ),
-    };
-  }
-});
 
 const HistoryDetailPage: React.FC = () => {
   const navigate = useNavigate();
@@ -176,23 +159,21 @@ const HistoryDetailPage: React.FC = () => {
         </div>
 
         <div className="flex w-1/2 flex-col">
-          <Suspense
-            fallback={
-              <div className="flex min-h-[24rem] items-center justify-center rounded-lg border border-slate-800 bg-slate-900/70 p-6 text-slate-400">
-                Loading attempt history…
-              </div>
-            }
-          >
-            <QuestionAttemptTable
-              items={attemptEntries}
-              isLoading={loading}
-              error={error}
-              emptyMessage="No attempt history recorded."
-              loadingMessage="Loading attempt history…"
-              onSelect={handleAttemptSelect}
-              listClassName="min-h-[24rem]"
-            />
-          </Suspense>
+          <RemoteWrapper<RemoteQuestionAttemptTableProps>
+            remote={() => import("historyUiService/QuestionAttemptTable")}
+            remoteName="History UI Service"
+            loadingMessage="Loading attempt history…"
+            errorMessage="Attempt history unavailable."
+            remoteProps={{
+              items: attemptEntries,
+              isLoading: loading,
+              error,
+              emptyMessage: "No attempt history recorded.",
+              loadingMessage: "Loading attempt history…",
+              onSelect: handleAttemptSelect,
+              listClassName: "min-h-[24rem]",
+            }}
+          />
         </div>
       </div>
     </Layout>
