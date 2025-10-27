@@ -303,7 +303,6 @@ export const disconnectSession = async (req, res) => {
       const {
         clearSnapshot,
         sessionEndedAt,
-        savedBy: overrideSavedBy,
         code: overrideCode,
         language: overrideLanguage,
       } = options;
@@ -324,7 +323,6 @@ export const disconnectSession = async (req, res) => {
         language:
           overrideLanguage ??
           (typeof overrideCode === "string" ? req.body?.language : undefined),
-        savedBy: overrideSavedBy ?? targetId,
         userId: targetId,
         participants: participantsForPayload,
         clearSnapshot,

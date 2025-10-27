@@ -104,8 +104,7 @@ export async function persistSessionHistory(session, options = {}) {
     return;
   }
 
-  const targetUserId =
-    sanitiseString(options.userId) ?? sanitiseString(options.savedBy) ?? null;
+  const targetUserId = sanitiseString(options.userId) ?? null;
 
   if (!targetUserId) {
     console.warn(
@@ -180,8 +179,6 @@ export async function persistSessionHistory(session, options = {}) {
     code,
     language,
     participants,
-    savedBy:
-      sanitiseString(options.savedBy) ?? snapshot?.savedBy ?? targetUserId,
     sessionEndedAt:
       options.sessionEndedAt ?? session.endedAt ?? new Date().toISOString(),
     question,

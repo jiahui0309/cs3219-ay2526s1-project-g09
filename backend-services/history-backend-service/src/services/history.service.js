@@ -59,8 +59,7 @@ export default class HistoryService {
       typeof payload?.code === "string" ? payload.code : payload?.codeSnapshot;
     const participants = sanitiseParticipants(payload?.participants);
     const question = sanitiseQuestion(payload?.question);
-    const userId =
-      sanitiseString(payload?.userId) ?? sanitiseString(payload?.savedBy);
+    const userId = sanitiseString(payload?.userId) ?? null;
 
     if (!sessionId) {
       throw new Error("sessionId is required");
@@ -88,7 +87,6 @@ export default class HistoryService {
       code,
       language:
         sanitiseString(payload?.language)?.toLowerCase() ?? DEFAULT_LANGUAGE,
-      savedBy: sanitiseString(payload?.savedBy) ?? userId,
       sessionEndedAt: payload?.sessionEndedAt
         ? new Date(payload.sessionEndedAt)
         : undefined,

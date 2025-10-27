@@ -38,7 +38,6 @@ class CodeSnapshotService {
     const snapshot = {
       code,
       language,
-      savedBy: userId ?? sessionEntry.last?.savedBy ?? null,
       updatedAt: new Date(),
     };
 
@@ -47,7 +46,6 @@ class CodeSnapshotService {
     if (userId) {
       sessionEntry.users.set(userId, {
         ...snapshot,
-        savedBy: userId,
       });
     }
   }

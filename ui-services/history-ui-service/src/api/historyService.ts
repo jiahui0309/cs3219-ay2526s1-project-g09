@@ -32,7 +32,6 @@ interface HistoryEntryPayload {
   };
   code?: string;
   language?: string;
-  savedBy?: string;
   sessionEndedAt?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -84,7 +83,6 @@ const mapToHistoryEntry = (payload: HistoryEntryPayload): HistoryEntry => {
         ? payload.question?.timeLimit
         : undefined,
     language: normaliseString(payload.language) ?? undefined,
-    savedBy: normaliseString(payload.savedBy) ?? undefined,
     code: typeof payload.code === "string" ? payload.code : "",
     sessionEndedAt: payload.sessionEndedAt
       ? new Date(payload.sessionEndedAt)

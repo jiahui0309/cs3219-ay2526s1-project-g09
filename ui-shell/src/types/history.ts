@@ -8,7 +8,6 @@ export interface HistorySnapshot {
   topics: string[];
   timeLimit?: number;
   language?: string;
-  savedBy?: string;
   participants: string[];
   code: string;
   sessionEndedAt?: Date;

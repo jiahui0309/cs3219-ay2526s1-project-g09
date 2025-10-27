@@ -24,7 +24,6 @@ interface HistorySnapshotPayload {
   };
   code?: string;
   language?: string;
-  savedBy?: string;
   sessionEndedAt?: string | number | Date;
   createdAt?: string | number | Date;
   updatedAt?: string | number | Date;
@@ -104,7 +103,6 @@ export function normaliseHistorySnapshot(
     timeLimit:
       toNumber(value.timeLimit ?? value.question?.timeLimit) ?? undefined,
     language: toString(value.language) ?? undefined,
-    savedBy: toString(value.savedBy) ?? undefined,
     participants: toStringArray(value.participants ?? []),
     code: typeof value.code === "string" ? value.code : "",
     sessionEndedAt: toDate(value.sessionEndedAt),

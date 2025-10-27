@@ -139,7 +139,6 @@ export const initSocket = (server) => {
             const participantsForPayload =
               participantIds.length > 0 ? participantIds : [participantId];
             void persistSessionHistory(result.session, {
-              savedBy: participantId,
               userId: participantId,
               participants: participantsForPayload,
               clearSnapshot: index === targets.length - 1,
@@ -167,7 +166,6 @@ export const initSocket = (server) => {
             },
           );
           void persistSessionHistory(result.session, {
-            savedBy: result.removedUser,
             userId: result.removedUser,
             participants:
               participantIdsForRemoved.length > 0
@@ -306,7 +304,6 @@ export const initSocket = (server) => {
               const participantsForPayload =
                 participantIds.length > 0 ? participantIds : [participantId];
               void persistSessionHistory(session, {
-                savedBy: participantId,
                 userId: participantId,
                 participants: participantsForPayload,
                 clearSnapshot: index === targets.length - 1,
@@ -331,7 +328,6 @@ export const initSocket = (server) => {
               },
             );
             void persistSessionHistory(session, {
-              savedBy: removedUser,
               userId: removedUser,
               participants:
                 participantIdsForRemoved.length > 0

@@ -9,7 +9,6 @@ export interface HistoryEntry {
   topics: string[];
   timeLimit?: number;
   language?: string;
-  savedBy?: string;
   code: string;
   sessionEndedAt?: Date;
   createdAt?: Date;

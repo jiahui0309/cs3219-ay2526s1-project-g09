@@ -140,11 +140,6 @@ const HistoryDetailPage: React.FC = () => {
             >
               ← Back
             </button>
-            {entry?.savedBy && (
-              <span className="text-xs text-slate-400">
-                Saved by {entry.savedBy}
-              </span>
-            )}
           </div>
 
           <div className="h-[40vh] overflow-y-auto">
