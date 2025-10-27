@@ -1,15 +1,11 @@
-# Use Node for build & serve
 FROM node:22-alpine
 WORKDIR /app
+ENV NODE_ENV=production
 
-# Install deps
-COPY package*.json .
-RUN npm install --frozen-lockfile
+COPY package*.json ./
+RUN npm ci --omit=dev
 
-# Copy source
-COPY . .
+COPY src ./src
 
-# Expose port
 EXPOSE 5276
-
 CMD ["node", "src/server.js"]
