@@ -16,4 +16,5 @@ jobs:
       name: matching-ui-service
       path: ui-services/matching-ui-service
       bucket: peerprep-matching-ui-service
+      distribution_id: "E11PRKI2VE804Q"
     secrets: inherit

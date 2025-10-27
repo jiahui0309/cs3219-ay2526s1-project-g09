@@ -16,4 +16,5 @@ jobs:
       name: user-ui-service
       path: ui-services/user-ui-service
       bucket: peerprep-user-ui-service
+      distribution_id: "EAEABYMJ4RSH4"
     secrets: inherit

@@ -16,4 +16,5 @@ jobs:
       name: question-ui-service
       path: ui-services/question-ui-service
       bucket: peerprep-question-ui-service
+      distribution_id: "E3OUNMOA65S9P0"
     secrets: inherit
