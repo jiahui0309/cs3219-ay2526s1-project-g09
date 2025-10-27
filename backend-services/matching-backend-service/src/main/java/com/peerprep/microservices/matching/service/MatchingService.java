@@ -29,7 +29,8 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * Service for handling user matching logic, including match requests,
- * cancellations, and processing match notifications.
+ * cancellations, and processing match
+ * notifications.
  */
 @Service
 @RequiredArgsConstructor
@@ -41,7 +42,6 @@ public class MatchingService {
   private final AcceptanceService acceptanceService;
   private final UserPreferenceService userPreferenceService;
   private final RedisTemplate<String, Object> redisTemplate;
-  private final RedisChannels channels;
   private final ObjectMapper objectMapper;
 
   /*
@@ -53,9 +53,9 @@ public class MatchingService {
   /**
    * Attempt to find a match for a user asynchronously within a given time frame.
    *
-   * If a match exists in the pool, the future completes immediately.
-   * Otherwise, the user is added to the pool and wait until a compatible match is
-   * found or timeout expires.
+   * If a match exists in the pool, the future completes immediately. Otherwise,
+   * the user is added to the pool and wait
+   * until a compatible match is found or timeout expires.
    *
    * @param request   The {@link UserPreferenceRequest} of the user requesting a
    *                  match.
@@ -88,7 +88,7 @@ public class MatchingService {
     // If old request was deleted, notify other instances to cancel the old pending
     // match request
     if (oldDeleted) {
-      redisTemplate.convertAndSend(channels.CANCEL_CHANNEL, oldRequestId);
+      redisTemplate.convertAndSend(RedisChannels.CANCEL_CHANNEL, oldRequestId);
       log.info("Previous match request for user {} was removed. Notified other instances to cancel the old request",
           userId);
     }
@@ -186,7 +186,7 @@ public class MatchingService {
   private void publishMatchNotification(MatchingNotification matchResult) {
     try {
       String message = objectMapper.writeValueAsString(matchResult);
-      redisTemplate.convertAndSend(channels.MATCH_CHANNEL, message);
+      redisTemplate.convertAndSend(RedisChannels.MATCH_CHANNEL, message);
       log.info("Published match result for users {} and {}",
           matchResult.getUser1Preference().getUserId(),
           matchResult.getUser2Preference().getUserId());
@@ -197,20 +197,20 @@ public class MatchingService {
 
   /**
    * Publish a cancel notification event to all instances to cancel a pending
-   * match
-   * request.
+   * match request.
    * 
    * @param userId    The Id of the user canceling their match request.
    * @param requestId The Id of the match request being canceled.
    */
   private void publishCancelNotification(String userId, String requestId) {
-    redisTemplate.convertAndSend(channels.CANCEL_CHANNEL, requestId);
+    redisTemplate.convertAndSend(RedisChannels.CANCEL_CHANNEL, requestId);
     log.info("Published match cancel notification for user {} with requestId {}", userId, requestId);
   }
 
   /**
    * Handles a matched notification event from Redis Pub/Sub. Completes the
-   * corresponding futures for both users if they exist.
+   * corresponding futures for both users if they
+   * exist.
    * 
    * @param matchResult The matched notification details.
    */
@@ -242,6 +242,7 @@ public class MatchingService {
    *                          completed.
    * @param future            The CompletableFuture to complete.
    * @param matchedPreference The preference of the matched user.
+   * @param matchId           The unique ID of the match used for the outcome.
    */
   private void completeUserFuture(UserPreference userPreference, UserPreference matchedPreference,
       CompletableFuture<MatchingOutcome> future, String matchId) {
@@ -261,7 +262,8 @@ public class MatchingService {
 
   /**
    * Handles a cancel notification event from Redis Pub/Sub. Completes the
-   * corresponding future with CANCELLED status if it exists.
+   * corresponding future with CANCELLED status if
+   * it exists.
    * 
    * @param oldRequestId The Id of the match request being canceled.
    */

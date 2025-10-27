@@ -4,12 +4,15 @@
     // File Layout
     // "rootDir": "./src",
     "outDir": "dist",
+    "paths": {
+      "@src/*": ["./src/*"]
+    },
 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
     "module": "es2022",
     "target": "es2022",
-    "types": [],
+    "types": ["node", "vitest/globals"],
     // For nodejs:
     // "lib": ["esnext"],
     // "types": ["node"],
@@ -46,5 +49,7 @@
   },
   "eslint": {
     "allowDefaultProject": true
-  }
+  },
+  "include": ["src", "tests", "vitest.config.ts"],
+  "exclude": ["node_modules", "dist", "coverage"]
 }

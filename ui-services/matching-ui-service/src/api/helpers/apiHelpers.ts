@@ -5,22 +5,18 @@ import type {
   PreferenceResult,
 } from "../dto/matching.dto";
 
+const isDev = import.meta.env.VITE_MODE === "dev";
+
 export const MATCHING_API_BASE =
-  (import.meta.env.VITE_MODE == "dev"
-    ? "http://localhost:5274"
-    : "http://peerprep-matching-service.ap-southeast-1.elasticbeanstalk.com") +
+  (isDev ? "http://localhost:5274" : "https://d2zqikej7k9p0j.cloudfront.net") +
   "/api/v1/matching-service";
 
 export const QUESTION_API_BASE =
-  (import.meta.env.VITE_MODE == "dev"
-    ? "http://localhost:5275"
-    : "http://peerprep-question-service.ap-southeast-1.elasticbeanstalk.com") +
+  (isDev ? "http://localhost:5275" : "https://d2zqikej7k9p0j.cloudfront.net") +
   "/api/v1/question-service";
 
 export const COLLAB_API_BASE =
-  (import.meta.env.VITE_MODE == "dev"
-    ? "http://localhost:5276"
-    : "http://peerprep-collab-service.ap-southeast-1.elasticbeanstalk.com") +
+  (isDev ? "http://localhost:5276" : "https://d2zqikej7k9p0j.cloudfront.net") +
   "/api/v1/collab-service";
 
 /**

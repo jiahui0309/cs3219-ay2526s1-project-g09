@@ -3,7 +3,10 @@ import Editor from "@monaco-editor/react";
 import io from "socket.io-client";
 import { COLLAB_API_URL, SOCKET_BASE_URL } from "@/api/collabService";
 
-const socket = io(SOCKET_BASE_URL);
+const socket = io(SOCKET_BASE_URL, {
+  path: "/api/v1/collab-service/socket.io",
+  transports: ["websocket"],
+});
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const DEFAULT_LANGUAGE = "java";
 

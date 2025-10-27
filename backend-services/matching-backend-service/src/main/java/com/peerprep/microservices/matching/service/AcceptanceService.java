@@ -34,7 +34,6 @@ public class AcceptanceService {
 
   private final RedisAcceptanceService redisAcceptanceService;
   private final RedisTemplate<String, Object> redisTemplate;
-  private final RedisChannels channels;
   private final MatchingTimeoutConfig timeoutConfig;
   private final CollabServiceClient collabServiceClient;
 
@@ -62,7 +61,7 @@ public class AcceptanceService {
         matchId,
         userId,
         AcceptanceStatus.CONNECTED,
-        channels.MATCH_ACCEPTANCE_CHANNEL);
+        RedisChannels.MATCH_ACCEPTANCE_CHANNEL);
 
     if (updated == null) {
       throw new IllegalArgumentException("No such match: " + matchId);
@@ -75,7 +74,7 @@ public class AcceptanceService {
       log.info("Match {} was rejected. Completing future.", matchId);
       connectFuture.complete(outcome);
     } else {
-    // Add future if no outcome yet.
+      // Add future if no outcome yet.
       matchedWaitingFutures.put(userId, connectFuture);
       connectFuture.whenComplete((res, err) -> matchedWaitingFutures.remove(userId));
       log.info("Connected User {} to match {}", userId, matchId);
@@ -110,7 +109,7 @@ public class AcceptanceService {
         matchId,
         userId,
         AcceptanceStatus.ACCEPTED,
-        channels.MATCH_ACCEPTANCE_CHANNEL);
+        RedisChannels.MATCH_ACCEPTANCE_CHANNEL);
 
     if (updated == null) {
       throw new IllegalArgumentException("No such match: " + matchId);
@@ -142,7 +141,7 @@ public class AcceptanceService {
         matchId,
         userId,
         AcceptanceStatus.REJECTED,
-        channels.MATCH_ACCEPTANCE_CHANNEL);
+        RedisChannels.MATCH_ACCEPTANCE_CHANNEL);
 
     if (updated == null) {
       throw new IllegalArgumentException("No such match: " + matchId);
@@ -171,7 +170,8 @@ public class AcceptanceService {
    */
   private void publishAcceptanceNotification(String user1Id, String user2Id, String matchId,
       MatchAcceptanceOutcome outcome) {
-    log.info("Publishing acceptance notification for match status {} to users {} and {}", outcome.getStatus(), user1Id, user2Id);
+    log.info("Publishing acceptance notification for match status {} to users {} and {}", outcome.getStatus(), user1Id,
+        user2Id);
     AcceptanceNotification acceptanceNotification = new AcceptanceNotification(
         user1Id,
         user2Id,
@@ -179,7 +179,7 @@ public class AcceptanceService {
         matchId,
         outcome.getSession());
 
-    redisTemplate.convertAndSend(channels.MATCH_ACCEPTANCE_CHANNEL, acceptanceNotification);
+    redisTemplate.convertAndSend(RedisChannels.MATCH_ACCEPTANCE_CHANNEL, acceptanceNotification);
   }
 
   /**

@@ -16,7 +16,7 @@ async function start() {
       app.locals.io = io;
 
       server.listen(PORT);
-      console.log("User service server listening on http://localhost:" + PORT);
+      console.log("User service server listening on port:" + PORT);
     })
     .catch((err) => {
       console.error("Failed to connect to DB");
