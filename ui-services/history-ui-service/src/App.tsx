@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import HistoryTable from "@/components/QuestionHistoryTable";
+import HistoryTable from "@/components/QuestionTable/QuestionHistoryTable";
 import type { HistoryEntry } from "@/types/HistoryEntry";
 import { fetchHistoryEntries } from "@/api/historyService";
 import "./index.css";
@@ -145,19 +145,17 @@ const HistoryApp: React.FC<HistoryAppProps> = ({
     <div className="min-h-screen text-slate-100">
       {renderQuestionPanel ? (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1.6fr)]">
-          <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-0 shadow-lg shadow-slate-900/40">
-            <HistoryTable
-              items={entries}
-              isLoading={loading}
-              error={error}
-              selectedId={selectedId}
-              onSelect={handleRowSelect}
-              onRetry={() => {
-                const controller = new AbortController();
-                void loadHistory(controller.signal, submittedUserId);
-              }}
-            />
-          </div>
+          <HistoryTable
+            items={entries}
+            isLoading={loading}
+            error={error}
+            selectedId={selectedId}
+            onSelect={handleRowSelect}
+            onRetry={() => {
+              const controller = new AbortController();
+              void loadHistory(controller.signal, submittedUserId);
+            }}
+          />
         </div>
       ) : (
         <div>

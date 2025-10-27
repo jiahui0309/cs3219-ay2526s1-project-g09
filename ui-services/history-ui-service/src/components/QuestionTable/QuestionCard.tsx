@@ -20,7 +20,7 @@ const QuestionCard = ({ index, item, onClick }: QuestionCardProps) => {
     >
       {/* Index Card */}
       <Card className="p-2 text-right font-bold text-gray-400 text-xl bg-gray-800 border border-gray-700">
-        <CardContent className="grid justify-center">{index}</CardContent>
+        <CardContent className="grid justify-center">{index + 1}</CardContent>
       </Card>
       <Card className="p-2 flex-1 text-gray-200 bg-gray-800 border border-gray-700 hover:bg-gray-700">
         <CardContent className="grid grid-cols-4 gap-2">

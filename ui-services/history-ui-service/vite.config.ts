@@ -13,8 +13,10 @@ export default defineConfig({
       name: "history-ui-service",
       filename: "remoteEntry.js",
       exposes: {
-        "./QuestionHistoryTable": "./src/components/QuestionHistoryTable",
-        "./QuestionAttemptTable": "./src/components/QuestionAttemptTable",
+        "./QuestionHistoryTable":
+          "./src/components/QuestionTable/QuestionHistoryTable",
+        "./QuestionAttemptTable":
+          "./src/components/AttemptTable/QuestionAttemptTable",
         "./NotesWindow": "./src/components/NotesWindow",
         "./HistoryApp": "./src/App",
       },
