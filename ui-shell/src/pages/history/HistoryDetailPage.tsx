@@ -142,7 +142,7 @@ const HistoryDetailPage: React.FC = () => {
             </button>
           </div>
 
-          <div className="h-[40vh] overflow-y-auto">
+          <div className="overflow-y-auto">
             <RemoteWrapper
               remote={() => import("questionUiService/QuestionDisplay")}
               remoteName="Question UI Service"

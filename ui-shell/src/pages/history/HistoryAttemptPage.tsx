@@ -9,6 +9,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { RemoteWrapper } from "@/components/mfe/RemoteWrapper";
 import Layout from "@components/layout/BlueBgLayout";
 import NavHeader from "@components/common/NavHeader";
+import { Button } from "@/components/ui/button";
 import type { HistorySnapshot } from "@/types/history";
 import {
   fetchHistorySnapshot,
@@ -193,7 +194,7 @@ const HistoryAttemptPage: React.FC = () => {
   return (
     <Layout navHeader={<NavHeader />}>
       <div className="flex h-[85vh] gap-4 px-4">
-        <div className="flex w-1/3 flex-col gap-4">
+        <div className="flex w-1/2 flex-col gap-4">
           <div className="flex items-center justify-between">
             <button
               type="button"
@@ -204,7 +205,7 @@ const HistoryAttemptPage: React.FC = () => {
             </button>
           </div>
 
-          <div className="h-[40vh] overflow-y-auto">
+          <div className="flex-1 overflow-y-auto">
             <RemoteWrapper
               remote={() => import("questionUiService/QuestionDisplay")}
               remoteName="Question UI Service"
@@ -215,7 +216,7 @@ const HistoryAttemptPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col">
+        <div className="flex-1 rounded-lg ">
           <RemoteWrapper
             remote={loadSavedCodePanel}
             remoteName="History UI Service"
@@ -223,6 +224,17 @@ const HistoryAttemptPage: React.FC = () => {
             errorMessage="Saved code panel unavailable."
             remoteProps={savedCodePanelProps}
           />
+          <div className="flex justify-end mt-4">
+            <Button
+              type="button"
+              onClick={() => {
+                void persistCode();
+              }}
+              disabled={isSaving || codeDraft === lastSavedCode}
+            >
+              {isSaving ? "Saving..." : "Save Code"}
+            </Button>
+          </div>
         </div>
       </div>
     </Layout>
