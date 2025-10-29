@@ -90,6 +90,14 @@ export default class HistoryService {
       sessionEndedAt: payload?.sessionEndedAt
         ? new Date(payload.sessionEndedAt)
         : undefined,
+      sessionStartedAt: payload?.sessionStartedAt
+        ? new Date(payload.sessionStartedAt)
+        : undefined,
+      durationMs:
+        typeof payload?.durationMs === "number" &&
+        Number.isFinite(payload.durationMs)
+          ? Math.max(0, payload.durationMs)
+          : undefined,
       metadata: payload?.metadata ?? undefined,
     };
 
@@ -204,6 +212,32 @@ export default class HistoryService {
 
     if (payload.metadata !== undefined) {
       update.metadata = payload.metadata;
+    }
+
+    if (payload.sessionStartedAt !== undefined) {
+      const date = payload.sessionStartedAt
+        ? new Date(payload.sessionStartedAt)
+        : null;
+      if (date && Number.isNaN(date.getTime())) {
+        const error = new Error("sessionStartedAt must be a valid date");
+        error.status = 400;
+        throw error;
+      }
+      update.sessionStartedAt = date ?? undefined;
+    }
+
+    if (payload.durationMs !== undefined) {
+      const duration =
+        typeof payload.durationMs === "number" &&
+        Number.isFinite(payload.durationMs)
+          ? Math.max(0, payload.durationMs)
+          : null;
+      if (duration === null) {
+        const error = new Error("durationMs must be a non-negative number");
+        error.status = 400;
+        throw error;
+      }
+      update.durationMs = duration;
     }
 
     if (Object.keys(update).length === 0) {

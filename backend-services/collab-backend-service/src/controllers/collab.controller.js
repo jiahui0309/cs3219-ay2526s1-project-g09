@@ -327,6 +327,8 @@ export const disconnectSession = async (req, res) => {
         participants: participantsForPayload,
         clearSnapshot,
         sessionEndedAt,
+        sessionStartedAt: session.createdAt,
+        durationMs: session.timeTaken,
       });
     };
 

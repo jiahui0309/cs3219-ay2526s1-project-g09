@@ -11,6 +11,8 @@ export interface HistorySnapshot {
   participants: string[];
   code: string;
   sessionEndedAt?: Date;
+  sessionStartedAt?: Date;
+  durationMs?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }

@@ -11,6 +11,31 @@ const sanitiseString = (value) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
+const toDate = (value) => {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  return null;
+};
+
+const toIsoString = (value) => {
+  const date = toDate(value);
+  return date ? date.toISOString() : null;
+};
+
+const toDurationMs = (value) => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(0, value);
+  }
+  return null;
+};
+
 const extractParticipants = (session, overrideParticipants) => {
   if (Array.isArray(overrideParticipants) && overrideParticipants.length > 0) {
     return overrideParticipants
@@ -181,6 +206,21 @@ export async function persistSessionHistory(session, options = {}) {
     participants,
     sessionEndedAt:
       options.sessionEndedAt ?? session.endedAt ?? new Date().toISOString(),
+    sessionStartedAt:
+      toIsoString(options.sessionStartedAt) ??
+      toIsoString(session.createdAt) ??
+      undefined,
+    durationMs:
+      toDurationMs(options.durationMs) ??
+      toDurationMs(session.timeTaken) ??
+      (() => {
+        const started = toDate(options.sessionStartedAt ?? session.createdAt);
+        const ended = toDate(options.sessionEndedAt ?? session.endedAt);
+        if (!started || !ended) {
+          return undefined;
+        }
+        return Math.max(0, ended.getTime() - started.getTime());
+      })(),
     question,
   };
 

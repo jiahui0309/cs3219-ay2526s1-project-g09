@@ -80,10 +80,7 @@ const HistoryDetailPage: React.FC = () => {
     const attemptTimestamp =
       entry.sessionEndedAt ?? entry.updatedAt ?? entry.createdAt ?? new Date();
 
-    const timeTakenLabel = formatDuration(
-      entry.sessionEndedAt,
-      entry.createdAt,
-    );
+    const timeTakenLabel = formatDuration(entry);
 
     const baseQuestion: Question = {
       title: entry.questionTitle || "Untitled Question",
@@ -175,13 +172,35 @@ const HistoryDetailPage: React.FC = () => {
   );
 };
 
-function formatDuration(endedAt?: Date, createdAt?: Date): string {
-  if (!endedAt || !createdAt) {
+function formatDuration(
+  entry: Pick<
+    HistorySnapshot,
+    "durationMs" | "sessionEndedAt" | "sessionStartedAt" | "createdAt"
+  >,
+): string {
+  const explicitDuration =
+    typeof entry.durationMs === "number" && entry.durationMs >= 0
+      ? entry.durationMs
+      : undefined;
+
+  const startedAt = entry.sessionStartedAt ?? entry.createdAt;
+  const endedAt = entry.sessionEndedAt;
+
+  const inferredDuration =
+    startedAt && endedAt
+      ? Math.max(0, endedAt.getTime() - startedAt.getTime())
+      : undefined;
+
+  const durationMs = explicitDuration ?? inferredDuration;
+  if (durationMs === undefined) {
     return "—";
   }
 
-  const diffMs = Math.max(0, endedAt.getTime() - createdAt.getTime());
-  const totalSeconds = Math.floor(diffMs / 1000);
+  return formatMilliseconds(durationMs);
+}
+
+function formatMilliseconds(durationMs: number): string {
+  const totalSeconds = Math.floor(durationMs / 1000);
   const hours = Math.floor(totalSeconds / 3600)
     .toString()
     .padStart(2, "0");

@@ -11,6 +11,8 @@ export interface HistoryEntry {
   language?: string;
   code: string;
   sessionEndedAt?: Date;
+  sessionStartedAt?: Date;
+  durationMs?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }

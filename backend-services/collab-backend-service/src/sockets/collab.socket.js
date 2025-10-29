@@ -143,6 +143,8 @@ export const initSocket = (server) => {
               participants: participantsForPayload,
               clearSnapshot: index === targets.length - 1,
               sessionEndedAt,
+              sessionStartedAt: result.session?.createdAt,
+              durationMs: result.session?.timeTaken,
             });
           });
         } else if (result.removedUser) {
@@ -172,6 +174,8 @@ export const initSocket = (server) => {
                 ? participantIdsForRemoved
                 : [result.removedUser],
             clearSnapshot: false,
+            sessionStartedAt: result.session?.createdAt,
+            durationMs: result.session?.timeTaken,
           });
         }
       } catch (error) {
@@ -308,6 +312,8 @@ export const initSocket = (server) => {
                 participants: participantsForPayload,
                 clearSnapshot: index === targets.length - 1,
                 sessionEndedAt,
+                sessionStartedAt: session?.createdAt,
+                durationMs: session?.timeTaken,
               });
             });
           } else if (removedUser) {
@@ -334,6 +340,8 @@ export const initSocket = (server) => {
                   ? participantIdsForRemoved
                   : [removedUser],
               clearSnapshot: false,
+              sessionStartedAt: session?.createdAt,
+              durationMs: session?.timeTaken,
             });
           }
         } catch (error) {

@@ -25,6 +25,8 @@ interface HistorySnapshotPayload {
   code?: string;
   language?: string;
   sessionEndedAt?: string | number | Date;
+  sessionStartedAt?: string | number | Date;
+  durationMs?: number;
   createdAt?: string | number | Date;
   updatedAt?: string | number | Date;
   timeLimit?: number;
@@ -106,6 +108,13 @@ export function normaliseHistorySnapshot(
     participants: toStringArray(value.participants ?? []),
     code: typeof value.code === "string" ? value.code : "",
     sessionEndedAt: toDate(value.sessionEndedAt),
+    sessionStartedAt: toDate(value.sessionStartedAt),
+    durationMs: (() => {
+      const duration = toNumber(value.durationMs);
+      return typeof duration === "number" && duration >= 0
+        ? duration
+        : undefined;
+    })(),
     createdAt: toDate(value.createdAt),
     updatedAt: toDate(value.updatedAt),
   };

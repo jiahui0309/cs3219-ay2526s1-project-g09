@@ -23,6 +23,8 @@ const SessionHistorySchema = new mongoose.Schema(
     code: { type: String, required: true },
     language: { type: String, default: "javascript" },
     sessionEndedAt: { type: Date },
+    sessionStartedAt: { type: Date },
+    durationMs: { type: Number },
     metadata: { type: mongoose.Schema.Types.Mixed },
   },
   {

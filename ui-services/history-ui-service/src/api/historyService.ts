@@ -33,6 +33,8 @@ interface HistoryEntryPayload {
   code?: string;
   language?: string;
   sessionEndedAt?: string;
+  sessionStartedAt?: string;
+  durationMs?: number;
   createdAt?: string;
   updatedAt?: string;
   [key: string]: unknown;
@@ -87,6 +89,14 @@ const mapToHistoryEntry = (payload: HistoryEntryPayload): HistoryEntry => {
     sessionEndedAt: payload.sessionEndedAt
       ? new Date(payload.sessionEndedAt)
       : undefined,
+    sessionStartedAt: payload.sessionStartedAt
+      ? new Date(payload.sessionStartedAt)
+      : undefined,
+    durationMs:
+      typeof payload.durationMs === "number" &&
+      Number.isFinite(payload.durationMs)
+        ? Math.max(0, payload.durationMs)
+        : undefined,
     createdAt: payload.createdAt ? new Date(payload.createdAt) : undefined,
     updatedAt: payload.updatedAt ? new Date(payload.updatedAt) : undefined,
   };
