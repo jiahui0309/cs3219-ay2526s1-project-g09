@@ -12,6 +12,9 @@ import org.springframework.web.client.RestTemplate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Provides health endpoints for the Matching service.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
