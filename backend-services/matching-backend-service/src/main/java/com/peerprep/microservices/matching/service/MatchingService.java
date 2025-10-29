@@ -209,8 +209,7 @@ public class MatchingService {
 
   /**
    * Handles a matched notification event from Redis Pub/Sub. Completes the
-   * corresponding futures for both users if they
-   * exist.
+   * corresponding futures for both users if they exist.
    * 
    * @param matchResult The matched notification details.
    */
@@ -248,7 +247,11 @@ public class MatchingService {
       CompletableFuture<MatchingOutcome> future, String matchId) {
     String userId = userPreference.getUserId();
 
-    if (future == null || future.isDone()) {
+    if (future == null) {
+      return;
+    }
+
+    if (future.isDone()) {
       log.warn("No pending future found for user {}", userId);
       return;
     }
