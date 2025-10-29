@@ -1,5 +1,6 @@
-import CodeSnapshotService from "./codeSnapshot.service.js";
-import { sendHistorySnapshot } from "./history.client.js";
+import historyClient from "./history.client.js";
+
+const { sendHistorySnapshot } = historyClient;
 
 const DEFAULT_LANGUAGE = "javascript";
 
@@ -142,20 +143,13 @@ export async function persistSessionHistory(session, options = {}) {
     return;
   }
 
-  const snapshot =
-    options.snapshot ??
-    CodeSnapshotService.get(sessionId, targetUserId) ??
-    CodeSnapshotService.get(sessionId) ??
-    undefined;
-
-  const code = typeof options.code === "string" ? options.code : snapshot?.code;
+  const code = typeof options.code === "string" ? options.code : undefined;
 
   if (!code) {
     console.warn(
       `[sessionHistory] No code snapshot available; skipping history persistence`,
       {
         sessionId,
-        snapshot,
         options,
       },
     );
@@ -163,9 +157,7 @@ export async function persistSessionHistory(session, options = {}) {
   }
 
   const language =
-    sanitiseString(options.language)?.toLowerCase() ??
-    snapshot?.language ??
-    DEFAULT_LANGUAGE;
+    sanitiseString(options.language)?.toLowerCase() ?? DEFAULT_LANGUAGE;
 
   const participants = extractParticipants(session, options.participants);
 
@@ -227,13 +219,5 @@ export async function persistSessionHistory(session, options = {}) {
   console.log("[sessionHistory] Sending payload to history service", payload);
   await sendHistorySnapshot(payload);
 
-  CodeSnapshotService.clearForUser(sessionId, targetUserId);
-
-  if (options.clearSnapshot === true) {
-    console.log(
-      "[sessionHistory] Clearing cached snapshot for session",
-      sessionId,
-    );
-    CodeSnapshotService.clear(sessionId);
-  }
+  // No in-memory snapshot store to clear when operating in final-state mode.
 }

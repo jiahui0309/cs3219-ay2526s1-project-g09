@@ -1,13 +1,55 @@
 import { Server } from "socket.io";
 import SessionService from "../services/session.service.js";
-import CodeSnapshotService from "../services/codeSnapshot.service.js";
 import { persistSessionHistory } from "../services/sessionHistory.service.js";
+
+const DEFAULT_LANGUAGE = "javascript";
 
 const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
 const HEARTBEAT_EVENT = "heartbeat";
 
 const trackedSockets = new Map();
 const disconnectTimers = new Map();
+const sessionCodeCache = new Map();
+
+const normaliseLanguage = (language) => {
+  if (typeof language !== "string") {
+    return null;
+  }
+  const trimmed = language.trim().toLowerCase();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const updateSessionCodeCache = (sessionId, userId, code, language) => {
+  if (typeof sessionId !== "string" || sessionId.trim().length === 0) {
+    return;
+  }
+  if (typeof code !== "string") {
+    return;
+  }
+
+  const entry = {
+    code,
+    language: normaliseLanguage(language) ?? DEFAULT_LANGUAGE,
+    userId: typeof userId === "string" ? userId : undefined,
+    updatedAt: Date.now(),
+  };
+
+  sessionCodeCache.set(sessionId, entry);
+};
+
+const getSessionCodeCache = (sessionId) => {
+  if (typeof sessionId !== "string" || sessionId.trim().length === 0) {
+    return null;
+  }
+  return sessionCodeCache.get(sessionId);
+};
+
+const clearSessionCodeCache = (sessionId) => {
+  if (!sessionId) {
+    return;
+  }
+  sessionCodeCache.delete(sessionId);
+};
 
 const getParticipantIds = (session) => {
   const ids = [];
@@ -129,24 +171,41 @@ export const initSocket = (server) => {
           const sessionEndedAt =
             result.session?.endedAt ?? new Date().toISOString();
 
-          targets.forEach((participantId, index) => {
-            console.log("[collab.socket] Persisting inactivity history", {
-              sessionId,
-              participantId,
-              index,
-              total: targets.length,
+          const cached = getSessionCodeCache(sessionId);
+          const code = socket.data.latestCode ?? cached?.code;
+          const language =
+            socket.data.latestLanguage ?? cached?.language ?? DEFAULT_LANGUAGE;
+
+          if (!code) {
+            console.warn(
+              "[collab.socket] Missing code while persisting inactivity history",
+              { sessionId, userId },
+            );
+          } else {
+            targets.forEach((participantId, index) => {
+              console.log("[collab.socket] Persisting inactivity history", {
+                sessionId,
+                participantId,
+                index,
+                total: targets.length,
+              });
+              const participantsForPayload =
+                participantIds.length > 0 ? participantIds : [participantId];
+              void persistSessionHistory(result.session, {
+                userId: participantId,
+                participants: participantsForPayload,
+                clearSnapshot: index === targets.length - 1,
+                sessionEndedAt,
+                sessionStartedAt: result.session?.createdAt,
+                durationMs: result.session?.timeTaken,
+                code,
+                language,
+              });
             });
-            const participantsForPayload =
-              participantIds.length > 0 ? participantIds : [participantId];
-            void persistSessionHistory(result.session, {
-              userId: participantId,
-              participants: participantsForPayload,
-              clearSnapshot: index === targets.length - 1,
-              sessionEndedAt,
-              sessionStartedAt: result.session?.createdAt,
-              durationMs: result.session?.timeTaken,
-            });
-          });
+            if (code) {
+              clearSessionCodeCache(sessionId);
+            }
+          }
         } else if (result.removedUser) {
           const participantIdsForRemoved = getParticipantIds(result.session);
           io.to(sessionId).emit("participantLeft", {
@@ -167,16 +226,30 @@ export const initSocket = (server) => {
               userId: result.removedUser,
             },
           );
-          void persistSessionHistory(result.session, {
-            userId: result.removedUser,
-            participants:
-              participantIdsForRemoved.length > 0
-                ? participantIdsForRemoved
-                : [result.removedUser],
-            clearSnapshot: false,
-            sessionStartedAt: result.session?.createdAt,
-            durationMs: result.session?.timeTaken,
-          });
+          const cached = getSessionCodeCache(sessionId);
+          const code = socket.data.latestCode ?? cached?.code;
+          const language =
+            socket.data.latestLanguage ?? cached?.language ?? DEFAULT_LANGUAGE;
+
+          if (!code) {
+            console.warn(
+              "[collab.socket] Missing code while persisting inactive removal history",
+              { sessionId, userId: result.removedUser },
+            );
+          } else {
+            void persistSessionHistory(result.session, {
+              userId: result.removedUser,
+              participants:
+                participantIdsForRemoved.length > 0
+                  ? participantIdsForRemoved
+                  : [result.removedUser],
+              clearSnapshot: false,
+              sessionStartedAt: result.session?.createdAt,
+              durationMs: result.session?.timeTaken,
+              code,
+              language,
+            });
+          }
         }
       } catch (error) {
         console.error(
@@ -221,6 +294,9 @@ export const initSocket = (server) => {
 
       socket.join(sessionId);
       socket.data.sessionId = sessionId;
+      if (!socket.data.latestLanguage) {
+        socket.data.latestLanguage = DEFAULT_LANGUAGE;
+      }
 
       if (typeof userId === "string" && userId.trim().length > 0) {
         socket.data.userId = userId.trim();
@@ -246,11 +322,17 @@ export const initSocket = (server) => {
 
     socket.on("codeUpdate", ({ sessionId, newCode, language }) => {
       refreshSocketActivity(socket, { persist: false });
-      CodeSnapshotService.update(sessionId, {
-        code: newCode,
-        language,
-        userId: socket.data.userId,
-      });
+      socket.data.latestCode = newCode;
+      socket.data.latestLanguage =
+        normaliseLanguage(language) ??
+        socket.data.latestLanguage ??
+        DEFAULT_LANGUAGE;
+      updateSessionCodeCache(
+        sessionId,
+        socket.data.userId,
+        newCode,
+        socket.data.latestLanguage,
+      );
       socket.to(sessionId).emit("codeUpdate", newCode);
     });
 
@@ -298,24 +380,43 @@ export const initSocket = (server) => {
             );
             const sessionEndedAt = session?.endedAt ?? new Date().toISOString();
 
-            targets.forEach((participantId, index) => {
-              console.log("[collab.socket] Persisting disconnect history", {
-                sessionId,
-                participantId,
-                index,
-                total: targets.length,
+            const cached = getSessionCodeCache(sessionId);
+            const code = socket.data.latestCode ?? cached?.code;
+            const language =
+              socket.data.latestLanguage ??
+              cached?.language ??
+              DEFAULT_LANGUAGE;
+
+            if (!code) {
+              console.warn(
+                "[collab.socket] Missing code while persisting disconnect history",
+                { sessionId },
+              );
+            } else {
+              targets.forEach((participantId, index) => {
+                console.log("[collab.socket] Persisting disconnect history", {
+                  sessionId,
+                  participantId,
+                  index,
+                  total: targets.length,
+                });
+                const participantsForPayload =
+                  participantIds.length > 0 ? participantIds : [participantId];
+                void persistSessionHistory(session, {
+                  userId: participantId,
+                  participants: participantsForPayload,
+                  clearSnapshot: index === targets.length - 1,
+                  sessionEndedAt,
+                  sessionStartedAt: session?.createdAt,
+                  durationMs: session?.timeTaken,
+                  code,
+                  language,
+                });
               });
-              const participantsForPayload =
-                participantIds.length > 0 ? participantIds : [participantId];
-              void persistSessionHistory(session, {
-                userId: participantId,
-                participants: participantsForPayload,
-                clearSnapshot: index === targets.length - 1,
-                sessionEndedAt,
-                sessionStartedAt: session?.createdAt,
-                durationMs: session?.timeTaken,
-              });
-            });
+              if (code) {
+                clearSessionCodeCache(sessionId);
+              }
+            }
           } else if (removedUser) {
             const participantIdsForRemoved = getParticipantIds(session);
             io.to(sessionId).emit("participantLeft", {
@@ -333,16 +434,32 @@ export const initSocket = (server) => {
                 userId: removedUser,
               },
             );
-            void persistSessionHistory(session, {
-              userId: removedUser,
-              participants:
-                participantIdsForRemoved.length > 0
-                  ? participantIdsForRemoved
-                  : [removedUser],
-              clearSnapshot: false,
-              sessionStartedAt: session?.createdAt,
-              durationMs: session?.timeTaken,
-            });
+            const cached = getSessionCodeCache(sessionId);
+            const code = socket.data.latestCode ?? cached?.code;
+            const language =
+              socket.data.latestLanguage ??
+              cached?.language ??
+              DEFAULT_LANGUAGE;
+
+            if (!code) {
+              console.warn(
+                "[collab.socket] Missing code while persisting removed disconnect history",
+                { sessionId, userId: removedUser },
+              );
+            } else {
+              void persistSessionHistory(session, {
+                userId: removedUser,
+                participants:
+                  participantIdsForRemoved.length > 0
+                    ? participantIdsForRemoved
+                    : [removedUser],
+                clearSnapshot: false,
+                sessionStartedAt: session?.createdAt,
+                durationMs: session?.timeTaken,
+                code,
+                language,
+              });
+            }
           }
         } catch (error) {
           console.error(
