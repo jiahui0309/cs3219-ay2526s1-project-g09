@@ -13,9 +13,9 @@ export interface HistoryTableProps {
 }
 
 const QuestionHistoryHeader = () => (
-  <div className="flex items-center gap-4 px-2 text-sm font-semibold text-slate-300">
-    <div className="w-16 text-center">No.</div>
-    <div className="flex-1 grid grid-cols-4 gap-4 px-4">
+  <div className="p-2 flex items-center gap-4 font-bold">
+    <div className="w-15 grid justify-center">No.</div>
+    <div className="px-10 flex-1 grid grid-cols-4 gap-4">
       <span>Question</span>
       <span>Category</span>
       <span>Difficulty</span>

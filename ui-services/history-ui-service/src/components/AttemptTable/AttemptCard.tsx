@@ -1,7 +1,5 @@
-import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { Card, CardContent } from "@/components/ui/card";
 import type { Attempt } from "@/types/Attempt";
-import type { KeyboardEvent } from "react";
 
 interface AttemptCardProps {
   index: number;
@@ -31,54 +29,26 @@ const AttemptCard: React.FC<AttemptCardProps> = ({ index, item, onClick }) => {
       ? `${item.timeTaken} min`
       : (item.timeTaken ?? "—");
 
-  const hasInteraction = typeof onClick === "function";
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (!hasInteraction) {
-      return;
-    }
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      onClick?.();
-    }
-  };
-
   const dateLabel = isValidDate(item.date) ? formatDate(item.date) : "—";
   const timeLabel = isValidDate(item.date) ? formatTime(item.date) : "—";
 
   return (
     <div
-      className={cn(
-        "flex w-full items-center gap-4",
-        hasInteraction &&
-          "cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900",
-      )}
-      role={hasInteraction ? "button" : undefined}
-      tabIndex={hasInteraction ? 0 : undefined}
+      className="flex items-center gap-4 w-full cursor-pointer"
       onClick={onClick}
-      onKeyDown={handleKeyDown}
     >
-      <Card className="border border-gray-700 bg-gray-800 text-xl font-bold text-gray-400">
-        <CardContent className="grid justify-center gap-4 px-4 py-6">
-          {index + 1}
-        </CardContent>
+      {/* Index Card */}
+      <Card className="p-2 text-right font-bold text-gray-400 text-xl bg-gray-800 border border-gray-700">
+        <CardContent className="grid justify-center">{index + 1}</CardContent>
       </Card>
-      <Card className="flex-1 border border-gray-700 bg-gray-800 text-gray-200 transition-colors hover:bg-gray-700">
-        <CardContent className="grid grid-cols-4 gap-4 px-6 py-4">
-          <div className="flex flex-col">
-            <CardTitle className="text-lg text-orange-400">
-              {dateLabel}
-            </CardTitle>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-md">{timeLabel}</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-md">{item.partner || "—"}</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-md">{timeTakenLabel}</span>
-          </div>
+
+      {/* Attempt Info Card */}
+      <Card className="p-2 flex-1 text-gray-200 bg-gray-800 border border-gray-700 hover:bg-gray-700">
+        <CardContent className="grid grid-cols-4 gap-2">
+          <span className="text-gray-300">{dateLabel}</span>
+          <span className="text-gray-300">{timeLabel}</span>
+          <span className="text-gray-300">{item.partner || "—"}</span>
+          <span className="text-gray-300">{timeTakenLabel}</span>
         </CardContent>
       </Card>
     </div>
