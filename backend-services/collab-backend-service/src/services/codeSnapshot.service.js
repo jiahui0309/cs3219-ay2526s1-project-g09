@@ -1,4 +1,4 @@
-const DEFAULT_LANGUAGE = "java";
+const DEFAULT_LANGUAGE = "javascript";
 
 const normalise = (value) => {
   if (typeof value !== "string") {

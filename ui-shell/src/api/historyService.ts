@@ -2,7 +2,7 @@ import type { HistorySnapshot } from "@/types/history";
 
 const DEFAULT_BASE_URL =
   import.meta.env.VITE_MODE === "dev"
-    ? "http://localhost:5278/api/v1/history-service"
+    ? "http://localhost:5296/api/v1/history-service"
     : "/api/v1/history-service";
 
 const HISTORY_SERVICE_BASE_URL =

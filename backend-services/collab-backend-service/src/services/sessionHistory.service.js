@@ -1,7 +1,7 @@
 import CodeSnapshotService from "./codeSnapshot.service.js";
 import { sendHistorySnapshot } from "./history.client.js";
 
-const DEFAULT_LANGUAGE = "java";
+const DEFAULT_LANGUAGE = "javascript";
 
 const sanitiseString = (value) => {
   if (typeof value !== "string") {

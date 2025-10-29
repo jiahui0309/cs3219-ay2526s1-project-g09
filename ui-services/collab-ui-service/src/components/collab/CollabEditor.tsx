@@ -8,7 +8,7 @@ const socket = io(SOCKET_BASE_URL, {
   transports: ["websocket"],
 });
 const HEARTBEAT_INTERVAL_MS = 30_000;
-const DEFAULT_LANGUAGE = "java";
+const DEFAULT_LANGUAGE = "javascript";
 
 interface CollabEditorProps {
   questionId?: string;

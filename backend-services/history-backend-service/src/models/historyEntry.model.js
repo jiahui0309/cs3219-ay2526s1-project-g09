@@ -21,7 +21,7 @@ const SessionHistorySchema = new mongoose.Schema(
     },
     question: { type: QuestionSchema, required: true },
     code: { type: String, required: true },
-    language: { type: String, default: "java" },
+    language: { type: String, default: "javascript" },
     sessionEndedAt: { type: Date },
     metadata: { type: mongoose.Schema.Types.Mixed },
   },

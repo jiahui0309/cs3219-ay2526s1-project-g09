@@ -1,6 +1,6 @@
 import SessionHistory from "../models/historyEntry.model.js";
 
-const DEFAULT_LANGUAGE = "java";
+const DEFAULT_LANGUAGE = "javascript";
 const MAX_LIMIT = 100;
 
 const sanitiseString = (value) => {
