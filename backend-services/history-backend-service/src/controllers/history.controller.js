@@ -1,5 +1,21 @@
 import HistoryService from "../services/history.service.js";
 
+export const healthCheck = async (req, res) => {
+  try {
+    res.status(200).json({
+      status: "ok",
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: error.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+};
+
 export const createHistorySnapshot = async (req, res) => {
   try {
     console.log("[history.controller] POST /history payload", req.body);

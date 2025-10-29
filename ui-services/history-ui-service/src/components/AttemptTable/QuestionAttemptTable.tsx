@@ -2,7 +2,6 @@ import React from "react";
 import AttemptCard from "./AttemptCard";
 import { PaginatedHistoryList } from "../PaginatedHistoryList";
 import type { Attempt } from "@/types/Attempt";
-import { mockAttempts } from "@/data/mock-history-data";
 
 const AttemptHistoryHeader = () => (
   <div className="p-2 flex items-center gap-4 font-bold">
@@ -17,7 +16,7 @@ const AttemptHistoryHeader = () => (
 );
 
 export interface QuestionAttemptTableProps {
-  items?: Attempt[];
+  items: Attempt[];
   isLoading?: boolean;
   error?: string | null;
   onRetry?: () => void;
@@ -29,7 +28,7 @@ export interface QuestionAttemptTableProps {
 }
 
 const QuestionAttemptTable: React.FC<QuestionAttemptTableProps> = ({
-  items = mockAttempts,
+  items,
   isLoading = false,
   error = null,
   onRetry,

@@ -1,12 +1,12 @@
 import type { HistorySnapshot } from "@/types/history";
 
-const HISTORY_BASE_URL =
-  import.meta.env.VITE_MODE === "dev"
-    ? "http://localhost:5296/api/v1/history-service"
-    : "/api/v1/history-service";
+const isDev = import.meta.env.VITE_MODE === "dev";
 
-const HISTORY_SERVICE_BASE_URL =
-  import.meta.env.VITE_HISTORY_SERVICE_URL ?? HISTORY_BASE_URL;
+const HISTORY_BASE_URL = isDev
+  ? "http://localhost:5278"
+  : "https://d2zqikej7k9p0j.cloudfront.net";
+
+const HISTORY_SERVICE_BASE_URL = HISTORY_BASE_URL + "/api/v1/history-service";
 
 interface HistorySnapshotPayload {
   _id?: string;
