@@ -193,27 +193,24 @@ const HistoryAttemptPage: React.FC = () => {
 
   return (
     <Layout navHeader={<NavHeader />}>
+      <div className="flex items-center justify-between pl-4 mb-4">
+        <button
+          type="button"
+          onClick={handleBack}
+          className="rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-1 text-sm text-slate-200 transition-colors hover:bg-slate-800"
+        >
+          ← Back
+        </button>
+      </div>
       <div className="flex h-[85vh] gap-4 px-4">
-        <div className="flex w-1/2 flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={handleBack}
-              className="rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-1 text-sm text-slate-200 transition-colors hover:bg-slate-800"
-            >
-              ← Back
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto">
-            <RemoteWrapper
-              remote={() => import("questionUiService/QuestionDisplay")}
-              remoteName="Question UI Service"
-              remoteProps={entry ? { questionId: entry.questionId } : undefined}
-              loadingMessage="Loading Question..."
-              errorMessage="Question Display service unavailable"
-            />
-          </div>
+        <div className="flex-1 overflow-y-auto">
+          <RemoteWrapper
+            remote={() => import("questionUiService/QuestionDisplay")}
+            remoteName="Question UI Service"
+            remoteProps={entry ? { questionId: entry.questionId } : undefined}
+            loadingMessage="Loading Question..."
+            errorMessage="Question Display service unavailable"
+          />
         </div>
 
         <div className="flex-1 rounded-lg ">
