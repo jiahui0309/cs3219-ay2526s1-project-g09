@@ -1,7 +1,10 @@
 import SessionService from "../services/session.service.js";
 import { persistSessionHistory } from "../services/sessionHistory.service.js";
 
-const QUESTION_SERVICE_BASE_URL = process.env.QUESTION_SERVICE_URL;
+const isDev = process.env.VITE_MODE === "dev";
+const QUESTION_SERVICE_BASE_URL = isDev
+  ? process.env.QUESTION_SERVICE_URL
+  : "https://d1h013fkmpx3nu.cloudfront.net/";
 
 const VALID_DIFFICULTIES = new Set(["Easy", "Medium", "Hard"]);
 
@@ -352,10 +355,7 @@ export const disconnectSession = async (req, res) => {
         persistForUser(participantId, {
           clearSnapshot: index === targets.length - 1,
           sessionEndedAt,
-          code:
-            participantId === userId && typeof finalCode === "string"
-              ? finalCode
-              : undefined,
+          code: finalCode,
         });
       });
     } else if (removedUser) {
@@ -365,10 +365,7 @@ export const disconnectSession = async (req, res) => {
       });
       persistForUser(removedUser, {
         clearSnapshot: false,
-        code:
-          removedUser === userId && typeof finalCode === "string"
-            ? finalCode
-            : undefined,
+        code: finalCode,
       });
     }
 

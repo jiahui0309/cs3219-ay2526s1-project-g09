@@ -1,11 +1,11 @@
-const isDev = import.meta.env.VITE_MODE === "dev";
+const isDev = process.env.VITE_MODE === "dev";
 const HISTORY_SERVICE_BASE_URL = isDev
   ? process.env.HISTORY_SERVICE_URL
   : "https://d1h013fkmpx3nu.cloudfront.net/";
 
 let hasLoggedMissingUrl = false;
 
-export async function sendHistorySnapshot(payload) {
+async function sendHistorySnapshot(payload) {
   console.log("[history.client] Preparing to send history snapshot", {
     sessionId: payload?.sessionId,
     userId: payload?.userId,
@@ -50,3 +50,7 @@ export async function sendHistorySnapshot(payload) {
     return null;
   }
 }
+
+module.exports = {
+  sendHistorySnapshot,
+};
