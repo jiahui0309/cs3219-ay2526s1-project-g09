@@ -1,7 +1,4 @@
-const isDev = process.env.VITE_MODE === "dev";
-const HISTORY_SERVICE_BASE_URL = isDev
-  ? process.env.HISTORY_SERVICE_URL
-  : "https://d1h013fkmpx3nu.cloudfront.net/";
+const HISTORY_SERVICE_BASE_URL = process.env.HISTORY_SERVICE_URL;
 
 let hasLoggedMissingUrl = false;
 

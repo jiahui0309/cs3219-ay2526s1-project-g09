@@ -1,10 +1,7 @@
 import SessionService from "../services/session.service.js";
 import { persistSessionHistory } from "../services/sessionHistory.service.js";
 
-const isDev = process.env.VITE_MODE === "dev";
-const QUESTION_SERVICE_BASE_URL = isDev
-  ? process.env.QUESTION_SERVICE_URL
-  : "https://d1h013fkmpx3nu.cloudfront.net/";
+const QUESTION_SERVICE_BASE_URL = process.env.QUESTION_SERVICE_URL;
 
 const VALID_DIFFICULTIES = new Set(["Easy", "Medium", "Hard"]);
 
