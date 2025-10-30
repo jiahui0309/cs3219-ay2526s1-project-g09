@@ -6,6 +6,6 @@ services:
       dockerfile: Dockerfile
     container_name: peerprep-history-service
     ports:
-      - "80:5278"
+      - "80:5296"
     env_file:
       - .env
