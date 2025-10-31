@@ -127,5 +127,5 @@ services:
     env_file:
       - ./backend-services/history-backend-service/.env
     ports:
-      - "5296:5296"
+      - "5278:5278"
     container_name: peerprep-history-service
