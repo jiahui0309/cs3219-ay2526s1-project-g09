@@ -1,4 +1,6 @@
 import { Server } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
+import { createClient } from "redis";
 import * as Y from "yjs";
 import SessionService from "../services/session.service.js";
 import { persistSessionHistory } from "../services/sessionHistory.service.js";
@@ -124,6 +126,39 @@ const getSessionSnapshot = (sessionId, socket) => {
   };
 };
 
+const initialiseRedisAdapter = async () => {
+  const redisUrl =
+    process.env.COLLAB_REDIS_URL ?? process.env.REDIS_URL ?? null;
+  const redisHost =
+    process.env.COLLAB_REDIS_HOST ?? process.env.REDIS_HOST ?? null;
+
+  if (!redisUrl && !redisHost) {
+    console.log(
+      "[collab.socket][redis] Adapter disabled: no COLLAB_REDIS_URL or COLLAB_REDIS_HOST configured.",
+    );
+    return null;
+  }
+
+  const pubClient = createClient({ url: redisUrl });
+  const subClient = pubClient.duplicate();
+
+  pubClient.on("error", (error) => {
+    console.error("[collab.socket][redis] Publisher error:", error);
+  });
+  subClient.on("error", (error) => {
+    console.error("[collab.socket][redis] Subscriber error:", error);
+  });
+
+  await Promise.all([pubClient.connect(), subClient.connect()]);
+
+  console.log("[collab.socket] Redis adapter connected.");
+
+  return {
+    adapter: createAdapter(pubClient, subClient),
+    clients: [pubClient, subClient],
+  };
+};
+
 const normaliseLanguage = (language) => {
   if (typeof language !== "string") {
     return null;
@@ -220,6 +255,28 @@ export const initSocket = (server) => {
       ],
       methods: ["GET", "POST"],
     },
+  });
+  const redisClients = [];
+
+  (async () => {
+    try {
+      const redisResources = await initialiseRedisAdapter();
+      if (redisResources?.adapter) {
+        io.adapter(redisResources.adapter);
+        redisClients.push(...(redisResources.clients ?? []));
+        console.log("[collab.socket] Redis adapter registered with Socket.IO.");
+      }
+    } catch (error) {
+      console.error(
+        "[collab.socket][redis] Failed to initialise adapter. Falling back to default adapter.",
+        error,
+      );
+    }
+  })().catch((error) => {
+    console.error(
+      "[collab.socket][redis] Unexpected error during adapter bootstrap:",
+      error,
+    );
   });
 
   const runInactivitySweep = async () => {
@@ -693,6 +750,14 @@ export const initSocket = (server) => {
 
   io.engine.on("close", () => {
     clearInterval(inactivityInterval);
+    redisClients.forEach((client) => {
+      client.quit?.().catch((error) => {
+        console.warn(
+          "[collab.socket][redis] Failed to close Redis client cleanly:",
+          error,
+        );
+      });
+    });
   });
 
   return io;
