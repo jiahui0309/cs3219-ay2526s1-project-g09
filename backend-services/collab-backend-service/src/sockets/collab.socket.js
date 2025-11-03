@@ -15,6 +15,10 @@ const disconnectTimers = new Map();
 const sessionCodeCache = new Map();
 const sessionDocs = new Map();
 
+const log = (...args) => {
+  console.log("[collab.socket]", ...args);
+};
+
 const encodeUpdateToBase64 = (update) =>
   Buffer.from(update ?? new Uint8Array()).toString("base64");
 
@@ -474,6 +478,11 @@ export const initSocket = (server) => {
           update: encodedState,
           language: docEntry.language ?? DEFAULT_LANGUAGE,
         });
+        log("Sent yjsInit", {
+          socketId: socket.id,
+          sessionId,
+          byteLength: encodedState?.length ?? 0,
+        });
         const currentContent = docEntry.text.toString();
         if (typeof currentContent === "string") {
           socket.data.latestCode = currentContent;
@@ -504,6 +513,11 @@ export const initSocket = (server) => {
           socket.data.userId ? ` as ${socket.data.userId}` : ""
         }`,
       );
+      log("joinRoom", {
+        socketId: socket.id,
+        sessionId,
+        userId: socket.data.userId,
+      });
     });
 
     socket.on("codeUpdate", ({ sessionId, newCode, language }) => {
@@ -551,10 +565,20 @@ export const initSocket = (server) => {
       }
 
       socket.to(sessionId).emit("codeUpdate", newCode);
+      log("Forwarded legacy codeUpdate", {
+        sessionId,
+        userId: socket.data.userId,
+        length: newCode.length,
+      });
     });
 
     socket.on(HEARTBEAT_EVENT, () => {
       refreshSocketActivity(socket);
+      log("Heartbeat", {
+        socketId: socket.id,
+        sessionId: socket.data.sessionId,
+        userId: socket.data.userId,
+      });
     });
 
     socket.on("yjsUpdate", (payload) => {
@@ -618,6 +642,65 @@ export const initSocket = (server) => {
         update: encoded,
         language: resolvedLanguage,
         userId: resolvedUserId,
+      });
+      log("Broadcast yjsUpdate", {
+        sessionId,
+        userId: resolvedUserId,
+        size: decoded.byteLength,
+      });
+    });
+
+    socket.on("cursorUpdate", (payload) => {
+      const normalizedPayload =
+        typeof payload === "object" && payload !== null ? payload : {};
+      const sessionId =
+        normalizedPayload.sessionId ?? socket.data.sessionId ?? null;
+      if (!sessionId) {
+        return;
+      }
+      const userId =
+        socket.data.userId ??
+        (typeof normalizedPayload.userId === "string"
+          ? normalizedPayload.userId.trim()
+          : null);
+      if (!userId) {
+        return;
+      }
+
+      socket.to(sessionId).emit("cursorUpdate", {
+        sessionId,
+        userId,
+        position: normalizedPayload.position ?? null,
+        selection: normalizedPayload.selection ?? null,
+      });
+      log("Forwarded cursorUpdate", {
+        sessionId,
+        userId,
+        position: normalizedPayload.position ?? null,
+      });
+    });
+
+    socket.on("awarenessUpdate", (payload) => {
+      const sessionId = payload?.sessionId ?? socket.data.sessionId;
+      const updatePayload = payload?.update;
+
+      if (!sessionId || !updatePayload) {
+        return;
+      }
+
+      const decoded = decodeUpdateFromBase64(updatePayload);
+      if (!decoded) {
+        console.warn(
+          "[collab.socket] Invalid awareness update payload",
+          payload,
+        );
+        return;
+      }
+
+      // Just broadcast to other clients in the same session room
+      socket.to(sessionId).emit("awarenessUpdate", {
+        sessionId,
+        update: encodeUpdateToBase64(decoded),
       });
     });
 
