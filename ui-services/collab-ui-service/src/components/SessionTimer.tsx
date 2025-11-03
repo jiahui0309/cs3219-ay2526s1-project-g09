@@ -9,23 +9,22 @@ interface SessionTimerProps {
 
 interface SessionResponse {
   success?: boolean;
-  session?: {
-    createdAt?: string;
-    endedAt?: string | null;
-    timeTaken?: number;
-  };
+  session?: SessionDetails;
   error?: string;
 }
 
-interface SessionPayload {
+interface SessionDetails {
   createdAt?: string;
   endedAt?: string | null;
   timeTaken?: number;
+  question?: {
+    timeLimit?: number;
+  };
 }
 
-const retrieveStartTime = async (
+const retrieveSessionDetails = async (
   sessionId: string,
-): Promise<SessionPayload> => {
+): Promise<SessionDetails> => {
   const res = await fetch(`${COLLAB_API_URL}${sessionId}`, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
@@ -38,17 +37,17 @@ const retrieveStartTime = async (
     );
   }
 
-  const data = (await res.json()) as SessionResponse | SessionPayload;
+  const data = (await res.json()) as SessionResponse | SessionDetails;
 
   if ("session" in data && data.session) {
     return data.session;
   }
 
-  return data as SessionPayload;
+  return data as SessionDetails;
 };
 
 const SessionTimer: React.FC<SessionTimerProps> = ({
-  initialTimeInSeconds = 310,
+  initialTimeInSeconds = 300,
   sessionId,
 }) => {
   const [time, setTime] = useState(initialTimeInSeconds);
@@ -91,7 +90,7 @@ const SessionTimer: React.FC<SessionTimerProps> = ({
 
     const initTimer = async () => {
       try {
-        const session = await retrieveStartTime(sessionId);
+        const session = await retrieveSessionDetails(sessionId);
 
         const startedAt = session.createdAt
           ? new Date(session.createdAt).getTime()
@@ -107,10 +106,11 @@ const SessionTimer: React.FC<SessionTimerProps> = ({
           Math.round((now - startedAt) / 1000),
         );
 
-        let initialRemaining = Math.max(
-          0,
-          initialTimeInSeconds - elapsedSeconds,
-        );
+        const limitSeconds =
+          session.question?.timeLimit ?? initialTimeInSeconds;
+        const timeLimit = limitSeconds * 60;
+
+        let initialRemaining = Math.max(0, timeLimit - elapsedSeconds);
 
         if (session.timeTaken && session.timeTaken > 0) {
           initialRemaining = 0;
