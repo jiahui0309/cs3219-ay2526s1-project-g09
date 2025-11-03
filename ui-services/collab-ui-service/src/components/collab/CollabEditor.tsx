@@ -187,60 +187,6 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
     return REMOTE_COLORS[Math.abs(hash) % REMOTE_COLORS.length];
   }, []);
 
-  // const rebindEditor1 = useCallback(() => {
-  //   const editor = editorRef.current;
-  //   const doc = docRef.current;
-  //   if (!editor || !doc) return;
-
-  //   const model = editor.getModel();
-  //   if (!model) return;
-
-  //   destroyBinding();
-
-  //   let awareness = awarenessRef.current;
-  //   if (!awareness) {
-  //     awareness = new Awareness(doc);
-  //     awarenessRef.current = awareness;
-  //   }
-
-  //   if (currentUserId) {
-  //     awareness.setLocalStateField("user", {
-  //       id: currentUserId,
-  //       name: currentUserId,
-  //       color: randomColorForUser(currentUserId),
-  //     });
-  //     console.log("[CollabEditor] Local awareness set:", {
-  //       id: currentUserId,
-  //       name: currentUserId,
-  //       color: randomColorForUser(currentUserId),
-  //     });
-  //   } else {
-  //     awareness.setLocalState(null);
-  //   }
-
-  //   const text = doc.getText("source");
-  //   bindingRef.current = new MonacoBinding(
-  //     text,
-  //     model,
-  //     new Set([editor]),
-  //     awareness,
-  //   );
-
-  //   // ✅ Log whenever awareness changes (remote users join / move cursors)
-  //   awareness.on("change", ({ added, updated, removed }) => {
-  //     const states = awareness.getStates();
-  //     console.log("[CollabEditor] Awareness change:", {
-  //       added,
-  //       updated,
-  //       removed,
-  //       allStates: Array.from(states.entries()).map(([clientID, state]) => ({
-  //         clientID,
-  //         user: state?.user,
-  //       })),
-  //     });
-  //   });
-  // }, [currentUserId, destroyBinding, randomColorForUser]);
-
   const rebindEditor = useCallback(() => {
     const editor = editorRef.current;
     const doc = docRef.current;
@@ -256,7 +202,6 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       awareness = new Awareness(doc);
       awarenessRef.current = awareness;
 
-      // ✅ Attach awareness propagation ONCE
       awareness.on(
         "update",
         (
@@ -267,7 +212,7 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
           }: { added: number[]; updated: number[]; removed: number[] },
           origin: unknown,
         ) => {
-          if (origin === socket) return; // prevent echo loops
+          if (origin === socket) return;
           const update = encodeAwarenessUpdate(awareness, [
             ...added,
             ...updated,
