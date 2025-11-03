@@ -105,6 +105,11 @@ const HistoryAttemptPage: React.FC = () => {
     [],
   );
 
+  const loadQuestionDisplay = useMemo(
+    () => () => import("questionUiService/QuestionDisplay"),
+    [],
+  );
+
   const savedCodePanelProps = useMemo(
     () => ({
       code: codeDraft,
@@ -205,7 +210,7 @@ const HistoryAttemptPage: React.FC = () => {
       <div className="flex h-[85vh] gap-4 px-4">
         <div className="flex-1 overflow-y-auto">
           <RemoteWrapper
-            remote={() => import("questionUiService/QuestionDisplay")}
+            remote={loadQuestionDisplay}
             remoteName="Question UI Service"
             remoteProps={entry ? { questionId: entry.questionId } : undefined}
             loadingMessage="Loading Question..."

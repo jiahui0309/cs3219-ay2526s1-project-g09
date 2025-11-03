@@ -1,15 +1,19 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import peerPrepIconWhite from "@assets/icon_white.svg";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/data/UserStore";
 import { RemoteWrapper } from "../mfe/RemoteWrapper";
 
-const NavHeader: React.FC = () => {
+const NavHeaderComponent: React.FC = () => {
   const location = useLocation();
   const currentPath = location.pathname;
   const navigate = useNavigate();
   const { user, setUser, setIsLoggingOut } = useAuth();
+  const loadLogoutButton = useMemo(
+    () => () => import("userUiService/LogoutButton"),
+    [],
+  );
 
   // Function to apply active/inactive styles
   const getLinkClasses = (path: string) => {
@@ -55,7 +59,7 @@ const NavHeader: React.FC = () => {
         </div>
 
         <RemoteWrapper
-          remote={() => import("userUiService/LogoutButton")}
+          remote={loadLogoutButton}
           remoteName="User UI Service"
           remoteProps={{
             onLogOutSuccess: () => {
@@ -72,5 +76,7 @@ const NavHeader: React.FC = () => {
     </nav>
   );
 };
+
+const NavHeader = React.memo(NavHeaderComponent);
 
 export default NavHeader;
