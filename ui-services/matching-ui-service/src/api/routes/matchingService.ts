@@ -56,7 +56,10 @@ export async function connectMatch(
     },
   );
 
-  if (status !== 200 && status !== 409) throw new Error(`HTTP error ${status}`);
+  const allowed = [200, 409, 410];
+  if (!allowed.includes(status)) {
+    throw new Error(`Unexpected HTTP status: ${status}`);
+  }
   if (!data) throw error ?? new Error("Failed to connect to match");
   return data;
 }

@@ -1,16 +1,12 @@
 package com.peerprep.microservices.matching;
 
-import java.time.Duration;
-
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextClosedEvent;
 
-import com.peerprep.microservices.matching.service.AcceptanceService;
 import com.peerprep.microservices.matching.service.GracefulShutdownService;
-import com.peerprep.microservices.matching.service.MatchingService;
 
 import lombok.extern.slf4j.Slf4j;
 

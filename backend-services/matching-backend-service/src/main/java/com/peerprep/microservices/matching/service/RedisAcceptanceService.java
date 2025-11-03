@@ -38,7 +38,7 @@ public class RedisAcceptanceService {
 
   private static final String MATCH_KEY_PREFIX = "match:";
   private static final String MATCHED_POOL_KEY = "matched_pool:";
-  private static final Duration MATCH_EXPIRATION = Duration.ofMinutes(2);
+  private static final Duration MATCH_EXPIRATION = Duration.ofSeconds(30);
 
   /**
    * Constructs a RedisAcceptanceService.
@@ -71,6 +71,28 @@ public class RedisAcceptanceService {
   }
 
   /**
+   * Retrieves the current match status JSON from Redis.
+   * 
+   * @param matchId the ID of the match
+   * @return the match status JSON string, or null if not found
+   */
+  public MatchAcceptanceStatus getMatchStatus(String matchId) {
+    String matchKey = "match:" + matchId;
+    String json = redisTemplate.opsForValue().get(matchKey);
+    if (json == null) {
+      return null;
+    }
+
+    try {
+      return objectMapper.readValue(json, MatchAcceptanceStatus.class);
+    } catch (JsonMappingException e) {
+      throw new AcceptanceMappingException("Failed to map JSON to MatchAcceptanceStatus", e);
+    } catch (JsonProcessingException e) {
+      throw new AcceptanceDeserializationException("Failed to deserialize JSON for MatchAcceptanceStatus", e);
+    }
+  }
+
+  /**
    * Atomically saves both the match details and user to matchId mappings.
    * 
    * @param status the {@link MatchAcceptanceStatus} containing match details
@@ -89,7 +111,7 @@ public class RedisAcceptanceService {
       String result = redisTemplate.execute(
         saveAcceptanceScript,
         List.of(MATCH_KEY_PREFIX, MATCHED_POOL_KEY),
-        matchId, user1Id, user2Id, json, String.valueOf(Duration.ofMinutes(2).toSeconds()));
+        matchId, user1Id, user2Id, json, String.valueOf(MATCH_EXPIRATION.toSeconds()));
 
       if ("OK".equals(result)) {
         log.info("Saved match {} atomically with users {} and {} in matched pool", matchId, user1Id, user2Id);
@@ -121,6 +143,32 @@ public class RedisAcceptanceService {
 
     log.info("Found matchId {} for userId {}", matchId, userId);
     return matchId;
+  }
+
+  /**
+   * Retrieves the creation timestamp (in Unix seconds) for a given matchId.
+   *
+   * @param matchId the ID of the match
+   * @return the creation timestamp as a {@link Long}, or null if not found or invalid
+   */
+  public Long getTimestampFromMatchId(String matchId) {
+    String timestampKey = MATCH_KEY_PREFIX + matchId + ":timestamp";
+    log.info("Retrieving timestamp for matchId {} with key {}", matchId, timestampKey);
+
+    String timestampValue = redisTemplate.opsForValue().get(timestampKey);
+    if (timestampValue == null) {
+      log.info("No timestamp found in Redis for matchId {}", matchId);
+      return null;
+    }
+
+    try {
+      Long timestamp = Long.parseLong(timestampValue);
+      log.info("Found timestamp {} for matchId {}", timestamp, matchId);
+      return timestamp;
+    } catch (NumberFormatException e) {
+      log.warn("Invalid timestamp value '{}' for matchId {}", timestampValue, matchId);
+      return null;
+    }
   }
 
   /**

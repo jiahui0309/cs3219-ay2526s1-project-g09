@@ -65,9 +65,24 @@ public class AcceptanceService {
       throw new IllegalArgumentException("No such match: " + matchId);
     }
 
-    MatchAcceptanceOutcome.Status finalStatus = evaluateMatchOutcome(updated);
+    // Handle expiration
+    String user1Id = updated.getMatchDetails().getUser1Id();
+    String user2Id = updated.getMatchDetails().getUser2Id();
+    AcceptanceStatus user1Status = updated.getUser1Accepted();
+    AcceptanceStatus user2Status = updated.getUser2Accepted();
+
+    boolean userExpired = (user1Id.equals(userId) && user1Status == AcceptanceStatus.EXPIRED)
+      || (user2Id.equals(userId) && user2Status == AcceptanceStatus.EXPIRED);
+
+    if (userExpired) {
+      log.warn("User {} failed to connect as match {} is expired. Returning EXPIRED status.", userId, matchId);
+      connectFuture.complete(MatchAcceptanceOutcome.Status.EXPIRED);
+      return connectFuture;
+    }
 
     // Complete future if outcome already determined.
+    MatchAcceptanceOutcome.Status finalStatus = evaluateMatchOutcome(updated);
+
     if (finalStatus != MatchAcceptanceOutcome.Status.PENDING) {
       log.info("Match {} was rejected. Completing future.", matchId);
       connectFuture.complete(finalStatus);
@@ -76,19 +91,75 @@ public class AcceptanceService {
     matchedWaitingFutures.put(userId, connectFuture);
     log.info("Connected User {} to match {}", userId, matchId);
 
-    // Timeout handling
-    long timeoutMs = timeoutConfig.getMatchAcceptance();
-    CompletableFuture.delayedExecutor(timeoutMs, TimeUnit.MILLISECONDS).execute(() -> {
-      if (!connectFuture.isDone()) {
-        log.warn("User {}'s connection to match {} timed out after {} ms. Rejecting..", userId, matchId, timeoutMs);
-
-        rejectMatch(userId, matchId);
-
-        log.info("User {}'s connect future for match {} marked as REJECTED due to timeout", userId, matchId);
-      }
-    });
+    handleExpiryRecheck(userId, matchId, connectFuture);
+    handleMatchConnectTimeout(userId, matchId, connectFuture);
 
     return connectFuture;
+  }
+
+  /**
+   * Schedules a one-time expiry verification check at (timestamp + 10s). If the match has not been connected by the
+   * other user by that time, marks it as REJECTED.
+   * 
+   * @param userId the ID of the user
+   * @param matchId the ID of the match
+   * @param connectFuture the future to complete if the match is rejected.
+   */
+  private void handleExpiryRecheck(String userId, String matchId,
+    CompletableFuture<MatchAcceptanceOutcome.Status> connectFuture) {
+
+    Long matchTimestamp = redisAcceptanceService.getTimestampFromMatchId(matchId);
+    long nowSec = System.currentTimeMillis() / 1000L; // Redis time is in UNIX seconds.
+    long delaySec = (matchTimestamp + timeoutConfig.getMatchAcceptanceConnectionExpiry()) - nowSec;
+    log.info("Scheduling expiry check for match {} in {} seconds", matchId, delaySec);
+
+    CompletableFuture.delayedExecutor(delaySec, TimeUnit.SECONDS).execute(() -> {
+      if (connectFuture.isDone()) {
+        return;
+      }
+
+      log.info("Running expiry check for match {}", matchId);
+
+      MatchAcceptanceStatus current = redisAcceptanceService.getMatchStatus(matchId);
+
+      String user1Id = current.getMatchDetails().getUser1Id();
+      String user2Id = current.getMatchDetails().getUser2Id();
+      AcceptanceStatus u1 = current.getUser1Accepted();
+      AcceptanceStatus u2 = current.getUser2Accepted();
+
+      // If the other user still hasn't connected, expire the match
+      boolean otherConnected = (user1Id.equals(userId) && u2 == AcceptanceStatus.CONNECTED)
+        || (user2Id.equals(userId) && u1 == AcceptanceStatus.CONNECTED);
+
+      if (!otherConnected) {
+        log.warn("Match {} expired after 10s. Other user not connected. Marking as REJECTED.", matchId);
+        connectFuture.complete(MatchAcceptanceOutcome.Status.REJECTED);
+      } else {
+        log.info("Match {} still valid. Other user connected in time.", matchId);
+      }
+
+    });
+  }
+
+  /**
+   * Handles the timeout for a user's connection to a match. If the user isn't accepted or rejected within the time
+   * limit, marks the match as REJECTED.
+   * 
+   * @param userId the ID of the user
+   * @param matchId the ID of the match
+   * @param connectFuture the future representing the user's connection status.
+   */
+  private void handleMatchConnectTimeout(String userId, String matchId,
+    CompletableFuture<MatchAcceptanceOutcome.Status> connectFuture) {
+    long timeoutMs = timeoutConfig.getMatchAcceptance();
+    CompletableFuture.delayedExecutor(timeoutMs, TimeUnit.MILLISECONDS).execute(() -> {
+      if (connectFuture.isDone()) {
+        return;
+      }
+      log.warn("User {}'s connection to match {} timed out after {} ms. Rejecting..", userId, matchId, timeoutMs);
+      rejectMatch(userId, matchId);
+      log.info("User {}'s connect future for match {} marked as REJECTED due to timeout", userId, matchId);
+    });
   }
 
   /**
