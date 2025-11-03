@@ -3,7 +3,7 @@ import Editor from "@monaco-editor/react";
 import type { editor as MonacoEditor } from "monaco-editor";
 import io from "socket.io-client";
 import * as Y from "yjs";
-import { Awareness } from "y-protocols/awareness";
+import { Awareness, encodeAwarenessUpdate } from "y-protocols/awareness";
 import { MonacoBinding } from "y-monaco";
 import { COLLAB_API_URL, SOCKET_BASE_URL } from "@/api/collabService";
 
@@ -62,6 +62,16 @@ interface CollabEditorProps {
   sessionId?: string | null;
   currentUserId?: string;
 }
+
+// Define a static palette for participant colors
+const REMOTE_COLORS = [
+  "#FF6B6B",
+  "#4ECDC4",
+  "#FFD166",
+  "#9B5DE5",
+  "#06D6A0",
+  "#118AB2",
+];
 
 const CollabEditor: React.FC<CollabEditorProps> = ({
   questionId,
@@ -169,26 +179,118 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
     }
   }, []);
 
+  const randomColorForUser = useCallback((userId: string) => {
+    let hash = 0;
+    for (let i = 0; i < userId.length; i++) {
+      hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return REMOTE_COLORS[Math.abs(hash) % REMOTE_COLORS.length];
+  }, []);
+
+  // const rebindEditor1 = useCallback(() => {
+  //   const editor = editorRef.current;
+  //   const doc = docRef.current;
+  //   if (!editor || !doc) return;
+
+  //   const model = editor.getModel();
+  //   if (!model) return;
+
+  //   destroyBinding();
+
+  //   let awareness = awarenessRef.current;
+  //   if (!awareness) {
+  //     awareness = new Awareness(doc);
+  //     awarenessRef.current = awareness;
+  //   }
+
+  //   if (currentUserId) {
+  //     awareness.setLocalStateField("user", {
+  //       id: currentUserId,
+  //       name: currentUserId,
+  //       color: randomColorForUser(currentUserId),
+  //     });
+  //     console.log("[CollabEditor] Local awareness set:", {
+  //       id: currentUserId,
+  //       name: currentUserId,
+  //       color: randomColorForUser(currentUserId),
+  //     });
+  //   } else {
+  //     awareness.setLocalState(null);
+  //   }
+
+  //   const text = doc.getText("source");
+  //   bindingRef.current = new MonacoBinding(
+  //     text,
+  //     model,
+  //     new Set([editor]),
+  //     awareness,
+  //   );
+
+  //   // ✅ Log whenever awareness changes (remote users join / move cursors)
+  //   awareness.on("change", ({ added, updated, removed }) => {
+  //     const states = awareness.getStates();
+  //     console.log("[CollabEditor] Awareness change:", {
+  //       added,
+  //       updated,
+  //       removed,
+  //       allStates: Array.from(states.entries()).map(([clientID, state]) => ({
+  //         clientID,
+  //         user: state?.user,
+  //       })),
+  //     });
+  //   });
+  // }, [currentUserId, destroyBinding, randomColorForUser]);
+
   const rebindEditor = useCallback(() => {
     const editor = editorRef.current;
     const doc = docRef.current;
-    if (!editor || !doc) {
-      return;
-    }
+    if (!editor || !doc) return;
+
     const model = editor.getModel();
-    if (!model) {
-      return;
-    }
+    if (!model) return;
 
     destroyBinding();
 
-    let awareness = awarenessRef.current;
+    let awareness = awarenessRef.current as Awareness;
     if (!awareness) {
       awareness = new Awareness(doc);
       awarenessRef.current = awareness;
+
+      // ✅ Attach awareness propagation ONCE
+      awareness.on(
+        "update",
+        (
+          {
+            added,
+            updated,
+            removed,
+          }: { added: number[]; updated: number[]; removed: number[] },
+          origin: unknown,
+        ) => {
+          if (origin === socket) return; // prevent echo loops
+          const update = encodeAwarenessUpdate(awareness, [
+            ...added,
+            ...updated,
+            ...removed,
+          ]);
+          const encoded = encodeUpdate(update);
+          socket.emit("awarenessUpdate", {
+            sessionId: activeSessionRef.current,
+            update: encoded,
+          });
+        },
+      );
     }
+
     if (currentUserId) {
-      awareness.setLocalStateField("user", { id: currentUserId });
+      const color = randomColorForUser(currentUserId);
+      const userState = {
+        id: currentUserId,
+        name: currentUserId,
+        color,
+      };
+      awareness.setLocalStateField("user", userState);
+      console.log("[CollabEditor] Local awareness set:", userState);
     } else {
       awareness.setLocalState(null);
     }
@@ -200,7 +302,7 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       new Set([editor]),
       awareness,
     );
-  }, [currentUserId, destroyBinding]);
+  }, [currentUserId, destroyBinding, randomColorForUser]);
 
   const handleSessionLeave = useCallback(async () => {
     try {
@@ -352,6 +454,11 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       _doc: Y.Doc,
       transaction: Y.Transaction,
     ) => {
+      console.log("[CollabEditor] Doc update fired", {
+        sessionId,
+        local: transaction.local,
+        size: update.length,
+      });
       const content = text.toString();
       latestCodeRef.current = content;
       queueLocalSave(content);
@@ -361,6 +468,11 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       }
 
       const encoded = encodeUpdate(update);
+      console.log("[CollabEditor] Emitting yjsUpdate", {
+        sessionId,
+        userId: currentUserId,
+        size: update.length,
+      });
       socket.emit("yjsUpdate", {
         sessionId,
         update: encoded,
@@ -456,8 +568,13 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       if (!payload?.sessionId || payload.sessionId !== sessionId) {
         return;
       }
+      console.log("[CollabEditor] Received yjsInit", {
+        sessionId,
+        hasUpdate: Boolean(payload.update),
+      });
       const update = decodeUpdate(payload.update);
       if (!update) {
+        console.warn("[CollabEditor] yjsInit missing update payload");
         ensureInitialContent("init-fallback");
         return;
       }
@@ -468,6 +585,10 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       hasReceivedInitialRef.current = true;
       try {
         Y.applyUpdate(doc, update);
+        console.log("[CollabEditor] Applied yjsInit update", {
+          sessionId,
+          size: update.length,
+        });
       } catch (error) {
         console.error("Failed to apply initial Yjs document", error);
       }
@@ -481,16 +602,25 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       if (!payload?.sessionId || payload.sessionId !== sessionId) {
         return;
       }
+      console.log("[CollabEditor] Received yjsUpdate", {
+        sessionId,
+        from: payload.sessionId ?? "unknown",
+      });
       const doc = docRef.current;
       if (!doc) {
         return;
       }
       const update = decodeUpdate(payload.update);
       if (!update) {
+        console.warn("[CollabEditor] Skipped yjsUpdate: invalid payload");
         return;
       }
       try {
         Y.applyUpdate(doc, update);
+        console.log("[CollabEditor] Applied remote yjsUpdate", {
+          sessionId,
+          size: update.length,
+        });
       } catch (error) {
         console.error("Failed to apply remote Yjs update", error);
       }
