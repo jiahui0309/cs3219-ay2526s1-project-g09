@@ -67,7 +67,7 @@ export const CollabSessionProvider: React.FC<ProviderProps> = ({
     setError(null);
 
     let attempts = 0;
-    const maxAttempts = 10;
+    const maxAttempts = 3;
     let lastError: unknown = null;
     let fetchedSession: CollabSession | null = null;
 
