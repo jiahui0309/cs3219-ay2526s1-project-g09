@@ -20,7 +20,9 @@ public class MatchAcceptanceOutcome {
     @JsonProperty("rejected")
     REJECTED,
     @JsonProperty("pending")
-    PENDING;
+    PENDING,
+    @JsonProperty("expired")
+    EXPIRED;
 
     @JsonCreator
     public static Status fromString(String value) {

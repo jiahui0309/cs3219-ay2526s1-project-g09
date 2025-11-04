@@ -17,4 +17,9 @@ public class MatchingTimeoutConfig {
    * Timeout for match acceptance (in milliseconds)
    */
   private long matchAcceptance = 15_000; // 15 seconds
+
+  /**
+   * Timeout for match expiry (in milliseconds)
+   */
+  private long matchAcceptanceConnectionExpiry = 10_000; // 10 seconds
 }

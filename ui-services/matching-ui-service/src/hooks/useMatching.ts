@@ -28,6 +28,7 @@ export function useMatching({ username }: UseMatchingProps) {
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [isWaitingForAcceptance, setIsWaitingForAcceptance] = useState(false);
   const [showRejectedDialog, setShowRejectedDialog] = useState(false);
+  const [showExpiredDialog, setShowExpiredDialog] = useState(false);
   const [matchRequestPromise, setMatchRequestPromise] =
     useState<Promise<MatchResult> | null>(null);
   const [timeoutConfig, setTimeoutConfig] = useState<TimeoutConfig>({
@@ -72,6 +73,8 @@ export function useMatching({ username }: UseMatchingProps) {
         navigate("/collab");
       } else if (response.status.toUpperCase() === "REJECTED") {
         setShowRejectedDialog(true);
+      } else if (response.status.toUpperCase() === "EXPIRED") {
+        setShowExpiredDialog(true);
       } else {
         setIsWaitingForAcceptance(true);
       }
@@ -126,6 +129,11 @@ export function useMatching({ username }: UseMatchingProps) {
     resetState();
   };
 
+  const handleDismissExpired = (): void => {
+    setShowExpiredDialog(false);
+    resetState();
+  };
+
   const resetState = () => {
     setIsWaitingForAcceptance(false);
     setShowRejectedDialog(false);
@@ -168,6 +176,7 @@ export function useMatching({ username }: UseMatchingProps) {
     preferences,
     isWaitingForAcceptance,
     showRejectedDialog,
+    showExpiredDialog,
     matchRequestPromise,
     timeoutConfig,
 
@@ -181,6 +190,7 @@ export function useMatching({ username }: UseMatchingProps) {
     handleMatchError,
     handleMatchNotFound,
     handleDismissRejected,
+    handleDismissExpired,
     getFirstTopicDifficultyAndTime,
   };
 }

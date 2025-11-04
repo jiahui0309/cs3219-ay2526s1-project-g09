@@ -20,6 +20,8 @@ export interface MatchFoundProps {
   isWaiting?: boolean;
   showRejectedDialog?: boolean;
   onDismissRejected?: () => void;
+  showExpiredDialog?: boolean;
+  onDismissExpired?: () => void;
 }
 
 const formatTime = (totalMinutes: number) => {
@@ -40,6 +42,8 @@ const MatchFound: React.FC<MatchFoundProps> = ({
   isWaiting = false,
   showRejectedDialog = false,
   onDismissRejected,
+  showExpiredDialog = false,
+  onDismissExpired,
 }) => {
   // Convert milliseconds to seconds for display
   const initialTime = Math.floor(acceptanceTimeout / 1000);
@@ -83,6 +87,27 @@ const MatchFound: React.FC<MatchFoundProps> = ({
           </DialogHeader>
           <DialogFooter>
             <Button onClick={onDismissRejected}>Back to Start</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showExpiredDialog}
+        onOpenChange={(open) => {
+          if (!open && onDismissExpired) {
+            onDismissExpired();
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle> Connection failed </DialogTitle>
+            <DialogDescription>
+              Failed to connect to the match.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={onDismissExpired}>Back to Start</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

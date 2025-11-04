@@ -24,6 +24,7 @@ const MatchingPage: React.FC<MatchingPageProps> = ({ user }) => {
     preferences,
     isWaitingForAcceptance,
     showRejectedDialog,
+    showExpiredDialog,
     matchRequestPromise,
     timeoutConfig,
     handleStartMatching,
@@ -35,6 +36,7 @@ const MatchingPage: React.FC<MatchingPageProps> = ({ user }) => {
     handleMatchError,
     handleMatchNotFound,
     handleDismissRejected,
+    handleDismissExpired,
     getFirstTopicDifficultyAndTime,
   } = useMatching({ username: user?.username ?? "" });
 
@@ -80,6 +82,8 @@ const MatchingPage: React.FC<MatchingPageProps> = ({ user }) => {
           isWaiting={isWaitingForAcceptance}
           showRejectedDialog={showRejectedDialog}
           onDismissRejected={handleDismissRejected}
+          showExpiredDialog={showExpiredDialog}
+          onDismissExpired={handleDismissExpired}
         />
       )}
     </main>

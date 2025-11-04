@@ -7,11 +7,16 @@
 -- ARGV[4] = serialized MatchAcceptanceStatus JSON
 -- ARGV[5] = TTL in seconds
 local matchKey = KEYS[1] .. ARGV[1]
+local timestampKey = matchKey .. ":timestamp"
 local user1Key = KEYS[2] .. ARGV[2]
 local user2Key = KEYS[2] .. ARGV[3]
 
 -- Save the match details
 redis.call("SET", matchKey, ARGV[4], "EX", ARGV[5])
+
+-- Save the match detail creation timestamp
+local timestamp = redis.call("TIME")[1]
+redis.call("SET", timestampKey, timestamp, "EX", ARGV[5])
 
 -- Save both user → matchId mappings
 redis.call("SET", user1Key, ARGV[1], "EX", ARGV[5])

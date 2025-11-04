@@ -16,6 +16,7 @@ import lombok.AllArgsConstructor;
 public class MatchAcceptanceStatus {
   public enum AcceptanceStatus {
     PENDING,
+    EXPIRED,
     CONNECTED,
     ACCEPTED,
     REJECTED
