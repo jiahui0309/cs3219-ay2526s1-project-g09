@@ -144,6 +144,7 @@ Base URL: `http://localhost:5274/api/v1/matching-service`
 
 - Expected Response:
   - HTTP STATUS 200 OK: The service is up.
+
   ```json
   {
     "service": "matching-service",
@@ -171,6 +172,7 @@ Base URL: `http://localhost:5274/api/v1/matching-service`
     ```
 
   - HTTP STATUS 503 SERVICE UNAVAILABLE: The service dependencies are down.
+
     ```json
     {
       "service": "matching-service",
@@ -187,6 +189,7 @@ Base URL: `http://localhost:5274/api/v1/matching-service`
 
 - Expected Response:
   - HTTP STATUS 200 OK: The configurations are successfully retrieved.
+
     ```json
     {
       "matchRequestTimeout": 30000,
@@ -226,6 +229,7 @@ Base URL: `http://localhost:5274/api/v1/matching-service`
 - Expected Response:
   - HTTP STATUS 200 OK:
     The user preference was successfully updated or created. Returns the user preference inserted.
+
     ```json
     {
       "userId": "sampleUserId",
@@ -251,6 +255,7 @@ Base URL: `http://localhost:5274/api/v1/matching-service`
 - Expected Response:
   - HTTP STATUS 200 OK:
     The user preference was successfully retrieved.
+
     ```json
     {
       "userId": "sampleUserId",
@@ -415,6 +420,15 @@ Base URL: `http://localhost:5274/api/v1/matching-service`
     }
     ```
 
+  - HTTP STATUS 410 GONE:
+    The match connection is expired.
+
+    ```json
+    {
+      "status": "expired"
+    }
+    ```
+
   - HTTP STATUS 500 Internal Server Error:
     The matchId does not exist, has expired or the supplied userId does not belong to the match acceptance process.
     ```
@@ -468,7 +482,8 @@ Base URL: `http://localhost:5274/api/v1/matching-service`
 
   - HTTP STATUS 500 Internal Server Error:
     The matchId does not exist, has expired or the supplied userId does not belong to the match acceptance process.
-    ```json
+
+    ```
     An unexpected error occurred
     ```
 
