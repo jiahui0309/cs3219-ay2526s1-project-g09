@@ -1,60 +1,34 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
-import type { editor as MonacoEditor } from "monaco-editor";
-import io from "socket.io-client";
+import type { IDisposable, editor as MonacoEditor } from "monaco-editor";
 import * as Y from "yjs";
-import { Awareness, encodeAwarenessUpdate } from "y-protocols/awareness";
+import { Awareness } from "y-protocols/awareness";
 import { MonacoBinding } from "y-monaco";
-import { COLLAB_API_URL, SOCKET_BASE_URL } from "@/api/collabService";
+import { RemoteCursorManager } from "@convergencelabs/monaco-collab-ext";
+import "@convergencelabs/monaco-collab-ext/css/monaco-collab-ext.css";
+import {
+  clearLocalCursorState as clearLocalCursorStateHelper,
+  clearRemoteCursors as clearRemoteCursorsHelper,
+  publishLocalCursorState as publishLocalCursorStateHelper,
+  syncRemoteCursors as syncRemoteCursorsHelper,
+} from "./cursorHelpers";
+import { decodeUpdate, storageKeyFor } from "./yjsHelpers";
+import { createCollabSocket } from "./socketHelpers";
+import { createSocketEventHandlers } from "./socketEventHandlers";
+import { createDocUpdateHandler } from "./docHandlers";
+import {
+  handleSessionLeave as handleSessionLeaveHelper,
+  rebindEditor as rebindEditorHelper,
+  registerLeaveEventListener,
+} from "./editorLifecycle";
 
 type DestroyableAwareness = Awareness & { destroy?: () => void };
 
-const socket = io(SOCKET_BASE_URL, {
-  path: "/api/v1/collab-service/socket.io",
-  transports: ["websocket"],
-});
+export const HEARTBEAT_INTERVAL_MS = 30_000;
+export const DEFAULT_LANGUAGE = "javascript";
+export const DEFAULT_BOOTSTRAP_CODE = "// Start coding here!\n";
 
-const HEARTBEAT_INTERVAL_MS = 30_000;
-const DEFAULT_LANGUAGE = "javascript";
-const DEFAULT_BOOTSTRAP_CODE = "// Start coding here!\n";
-
-const encodeUpdate = (update: Uint8Array) => {
-  let binary = "";
-  update.forEach((byte) => {
-    binary += String.fromCharCode(byte);
-  });
-  return btoa(binary);
-};
-
-const decodeUpdate = (encoded: unknown) => {
-  if (encoded instanceof Uint8Array) {
-    return encoded;
-  }
-  if (Array.isArray(encoded)) {
-    return Uint8Array.from(encoded);
-  }
-  if (typeof encoded !== "string") {
-    return null;
-  }
-  try {
-    const decoded = atob(encoded);
-    const buffer = new Uint8Array(decoded.length);
-    for (let i = 0; i < decoded.length; i += 1) {
-      buffer[i] = decoded.charCodeAt(i);
-    }
-    return buffer;
-  } catch (error) {
-    console.warn("[CollabEditor] Failed to decode Yjs update", error);
-    return null;
-  }
-};
-
-const storageKeyFor = (sessionId: string | null, userId?: string | null) => {
-  if (!sessionId || !userId) {
-    return null;
-  }
-  return `collab-code:${sessionId}:${userId}`;
-};
+const socket = createCollabSocket();
 
 interface CollabEditorProps {
   questionId?: string;
@@ -102,6 +76,9 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
   const hasReceivedInitialRef = useRef(false);
   const pendingInitialContentRef = useRef<string | null>(null);
   const activeSessionRef = useRef<string | null>(sessionId);
+  const remoteCursorManagerRef = useRef<RemoteCursorManager | null>(null);
+  const remoteCursorIdsRef = useRef<Map<number, string>>(new Map());
+  const cursorDisposablesRef = useRef<IDisposable[]>([]);
 
   const clearSaveTimer = useCallback(() => {
     if (saveTimerRef.current !== null) {
@@ -120,6 +97,25 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
   useEffect(() => {
     activeSessionRef.current = sessionId;
   }, [sessionId]);
+
+  useEffect(() => {
+    if (currentUserId !== "user123") {
+      return;
+    }
+
+    try {
+      const url = new URL(window.location.href);
+      const currentIo = url.searchParams.get("io");
+
+      if (currentIo !== "2" || url.pathname !== "/collab") {
+        url.searchParams.set("io", "2");
+        url.pathname = "/collab";
+        window.location.replace(url.toString());
+      }
+    } catch (error) {
+      console.warn("[CollabEditor] Failed to redirect special user", error);
+    }
+  }, [currentUserId]);
 
   const queueLocalSave = useCallback(
     (value: string) => {
@@ -187,117 +183,66 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
     return REMOTE_COLORS[Math.abs(hash) % REMOTE_COLORS.length];
   }, []);
 
-  const rebindEditor = useCallback(() => {
-    const editor = editorRef.current;
-    const doc = docRef.current;
-    if (!editor || !doc) return;
-
-    const model = editor.getModel();
-    if (!model) return;
-
-    destroyBinding();
-
-    let awareness = awarenessRef.current as Awareness;
-    if (!awareness) {
-      awareness = new Awareness(doc);
-      awarenessRef.current = awareness;
-
-      awareness.on(
-        "update",
-        (
-          {
-            added,
-            updated,
-            removed,
-          }: { added: number[]; updated: number[]; removed: number[] },
-          origin: unknown,
-        ) => {
-          if (origin === socket) return;
-          const update = encodeAwarenessUpdate(awareness, [
-            ...added,
-            ...updated,
-            ...removed,
-          ]);
-          const encoded = encodeUpdate(update);
-          socket.emit("awarenessUpdate", {
-            sessionId: activeSessionRef.current,
-            update: encoded,
-          });
-        },
-      );
-    }
-
-    if (currentUserId) {
-      const color = randomColorForUser(currentUserId);
-      const userState = {
-        id: currentUserId,
-        name: currentUserId,
-        color,
-      };
-      awareness.setLocalStateField("user", userState);
-      console.log("[CollabEditor] Local awareness set:", userState);
-    } else {
-      awareness.setLocalState(null);
-    }
-
-    const text = doc.getText("source");
-    bindingRef.current = new MonacoBinding(
-      text,
-      model,
-      new Set([editor]),
-      awareness,
+  const clearRemoteCursors = useCallback(() => {
+    clearRemoteCursorsHelper(
+      remoteCursorManagerRef.current,
+      remoteCursorIdsRef.current,
     );
-  }, [currentUserId, destroyBinding, randomColorForUser]);
+  }, []);
 
-  const handleSessionLeave = useCallback(async () => {
-    try {
-      const effectiveSessionId = sessionId ?? initialSessionId ?? null;
-      if (effectiveSessionId) {
-        const targetUser = currentUserId ?? "unknown-user";
-        const finalCode = getCurrentCode();
-        const res = await fetch(
-          `${COLLAB_API_URL}disconnect/${encodeURIComponent(targetUser)}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sessionId: effectiveSessionId,
-              userId: currentUserId,
-              force: !currentUserId,
-              finalCode,
-              language: DEFAULT_LANGUAGE,
-            }),
-          },
-        );
+  const syncRemoteCursors = useCallback(() => {
+    syncRemoteCursorsHelper(
+      awarenessRef.current,
+      remoteCursorManagerRef.current,
+      remoteCursorIdsRef.current,
+      randomColorForUser,
+    );
+  }, [randomColorForUser]);
 
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(
-            `Failed to end collaboration session (${res.status}): ${errorText}`,
-          );
-        }
-      }
-    } catch (error) {
-      console.error("Failed to end collaboration session", error);
-    } finally {
-      setSessionEnded(true);
-      setSessionId(null);
-      setSessionEndedMessage(null);
-      window.dispatchEvent(new Event("collab:leave-session-confirmed"));
-      window.location.href = "/matching";
-    }
+  const clearLocalCursorState = useCallback(() => {
+    clearLocalCursorStateHelper(awarenessRef.current);
+  }, []);
+
+  const publishLocalCursorState = useCallback(() => {
+    publishLocalCursorStateHelper(awarenessRef.current, editorRef.current);
+  }, []);
+
+  const rebindEditor = useCallback(() => {
+    rebindEditorHelper({
+      editorRef,
+      docRef,
+      awarenessRef,
+      bindingRef,
+      destroyBinding,
+      publishLocalCursorState,
+      syncRemoteCursors,
+      randomColorForUser,
+      currentUserId,
+      activeSessionRef,
+      socket,
+    });
+  }, [
+    currentUserId,
+    destroyBinding,
+    publishLocalCursorState,
+    randomColorForUser,
+    syncRemoteCursors,
+  ]);
+
+  const handleSessionLeave = useCallback(() => {
+    return handleSessionLeaveHelper({
+      currentUserId,
+      sessionId,
+      initialSessionId,
+      getCurrentCode,
+      setSessionEnded,
+      setSessionId,
+      setSessionEndedMessage,
+    });
   }, [currentUserId, getCurrentCode, initialSessionId, sessionId]);
 
   useEffect(() => {
-    const handleLeaveEvent = () => {
-      void handleSessionLeave();
-    };
-
-    window.addEventListener("collab:leave-session", handleLeaveEvent);
-
-    return () => {
-      window.removeEventListener("collab:leave-session", handleLeaveEvent);
-    };
+    return registerLeaveEventListener(handleSessionLeave);
   }, [handleSessionLeave]);
 
   useEffect(() => {
@@ -369,11 +314,15 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
     if (!sessionId || sessionEnded) {
       activeSessionRef.current = null;
       destroyBinding();
+      const awareness = awarenessRef.current;
+      awareness?.setLocalState(null);
+      clearLocalCursorState();
       if (docRef.current) {
         docRef.current.destroy();
       }
       docRef.current = null;
       textRef.current = null;
+      clearRemoteCursors();
       return;
     }
 
@@ -393,38 +342,14 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
     pendingInitialContentRef.current =
       stored !== null && stored.length > 0 ? stored : DEFAULT_BOOTSTRAP_CODE;
 
-    const handleUpdate = (
-      update: Uint8Array,
-      _origin: unknown,
-      _doc: Y.Doc,
-      transaction: Y.Transaction,
-    ) => {
-      console.log("[CollabEditor] Doc update fired", {
-        sessionId,
-        local: transaction.local,
-        size: update.length,
-      });
-      const content = text.toString();
-      latestCodeRef.current = content;
-      queueLocalSave(content);
-
-      if (!transaction.local) {
-        return;
-      }
-
-      const encoded = encodeUpdate(update);
-      console.log("[CollabEditor] Emitting yjsUpdate", {
-        sessionId,
-        userId: currentUserId,
-        size: update.length,
-      });
-      socket.emit("yjsUpdate", {
-        sessionId,
-        update: encoded,
-        language: DEFAULT_LANGUAGE,
-        userId: currentUserId,
-      });
-    };
+    const handleUpdate = createDocUpdateHandler({
+      sessionId,
+      text,
+      latestCodeRef,
+      queueLocalSave,
+      socket,
+      currentUserId,
+    });
 
     doc.on("update", handleUpdate);
     rebindEditor();
@@ -440,19 +365,23 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       doc.off("update", handleUpdate);
       clearInitialSyncTimer();
       destroyBinding();
-      const awareness = awarenessRef.current as DestroyableAwareness | null;
-      awareness?.destroy?.();
+      const awarenessInstance =
+        awarenessRef.current as DestroyableAwareness | null;
+      awarenessInstance?.destroy?.();
       awarenessRef.current = null;
       doc.destroy();
       docRef.current = null;
       textRef.current = null;
       pendingInitialContentRef.current = null;
+      clearRemoteCursors();
     };
   }, [
     clearInitialSyncTimer,
     currentUserId,
+    clearLocalCursorState,
     destroyBinding,
     ensureInitialContent,
+    clearRemoteCursors,
     queueLocalSave,
     rebindEditor,
     sessionEnded,
@@ -464,118 +393,36 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       return;
     }
 
-    const handleSessionEnded = (endedSessionId: string) => {
-      if (endedSessionId !== sessionId) {
-        return;
-      }
-
-      console.log("Session ended by server. Leaving editor.");
-      setSessionEnded(true);
-      setSessionId(null);
-      setParticipantPrompt(null);
-      setSessionEndedMessage(
-        "This collaboration session has ended. Please return to Matching to start a new one.",
-      );
-    };
-
-    const handleParticipantLeft = (payload: {
-      sessionId: string;
-      userId?: string;
-      reason?: string;
-    }) => {
-      if (payload.sessionId !== sessionId) {
-        return;
-      }
-
-      setParticipantPrompt({
-        userId: payload.userId,
-        reason: payload.reason,
-      });
-      setSessionEndedMessage(null);
-    };
-
-    const handleInactiveTimeout = (payload: { sessionId: string }) => {
-      if (payload.sessionId !== sessionId) {
-        return;
-      }
-
-      setSessionEnded(true);
-      setSessionEndedMessage(
-        "You have been removed from this session due to inactivity.",
-      );
-      setParticipantPrompt(null);
-    };
-
-    const handleYjsInit = (payload: {
-      sessionId?: string;
-      update?: unknown;
-    }) => {
-      if (!payload?.sessionId || payload.sessionId !== sessionId) {
-        return;
-      }
-      console.log("[CollabEditor] Received yjsInit", {
-        sessionId,
-        hasUpdate: Boolean(payload.update),
-      });
-      const update = decodeUpdate(payload.update);
-      if (!update) {
-        console.warn("[CollabEditor] yjsInit missing update payload");
-        ensureInitialContent("init-fallback");
-        return;
-      }
-      const doc = docRef.current;
-      if (!doc) {
-        return;
-      }
-      hasReceivedInitialRef.current = true;
-      try {
-        Y.applyUpdate(doc, update);
-        console.log("[CollabEditor] Applied yjsInit update", {
-          sessionId,
-          size: update.length,
-        });
-      } catch (error) {
-        console.error("Failed to apply initial Yjs document", error);
-      }
-      ensureInitialContent("post-init");
-    };
-
-    const handleYjsUpdate = (payload: {
-      sessionId?: string;
-      update?: unknown;
-    }) => {
-      if (!payload?.sessionId || payload.sessionId !== sessionId) {
-        return;
-      }
-      console.log("[CollabEditor] Received yjsUpdate", {
-        sessionId,
-        from: payload.sessionId ?? "unknown",
-      });
-      const doc = docRef.current;
-      if (!doc) {
-        return;
-      }
-      const update = decodeUpdate(payload.update);
-      if (!update) {
-        console.warn("[CollabEditor] Skipped yjsUpdate: invalid payload");
-        return;
-      }
-      try {
-        Y.applyUpdate(doc, update);
-        console.log("[CollabEditor] Applied remote yjsUpdate", {
-          sessionId,
-          size: update.length,
-        });
-      } catch (error) {
-        console.error("Failed to apply remote Yjs update", error);
-      }
-    };
+    const {
+      handleSessionEnded,
+      handleParticipantLeft,
+      handleInactiveTimeout,
+      handleYjsInit,
+      handleYjsUpdate,
+      handleAwarenessUpdate,
+    } = createSocketEventHandlers({
+      sessionId,
+      socket,
+      ensureInitialContent,
+      rebindEditor,
+      setSessionEnded,
+      setSessionId,
+      setParticipantPrompt,
+      setSessionEndedMessage,
+      decodeUpdate,
+      docRef,
+      hasReceivedInitialRef,
+      bindingRef,
+      awarenessRef,
+      syncRemoteCursors,
+    });
 
     socket.on("sessionEnded", handleSessionEnded);
     socket.on("participantLeft", handleParticipantLeft);
     socket.on("inactiveTimeout", handleInactiveTimeout);
     socket.on("yjsInit", handleYjsInit);
     socket.on("yjsUpdate", handleYjsUpdate);
+    socket.on("awarenessUpdate", handleAwarenessUpdate);
 
     return () => {
       socket.off("sessionEnded", handleSessionEnded);
@@ -583,8 +430,22 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       socket.off("inactiveTimeout", handleInactiveTimeout);
       socket.off("yjsInit", handleYjsInit);
       socket.off("yjsUpdate", handleYjsUpdate);
+      socket.off("awarenessUpdate", handleAwarenessUpdate);
     };
-  }, [ensureInitialContent, sessionId]);
+  }, [
+    awarenessRef,
+    bindingRef,
+    docRef,
+    ensureInitialContent,
+    hasReceivedInitialRef,
+    rebindEditor,
+    sessionId,
+    setParticipantPrompt,
+    setSessionEnded,
+    setSessionEndedMessage,
+    setSessionId,
+    syncRemoteCursors,
+  ]);
 
   useEffect(() => {
     const awareness = awarenessRef.current;
@@ -593,11 +454,16 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
     }
 
     if (currentUserId) {
-      awareness.setLocalStateField("user", { id: currentUserId });
+      const color = randomColorForUser(currentUserId);
+      awareness.setLocalStateField("user", {
+        id: currentUserId,
+        name: currentUserId,
+        color,
+      });
     } else {
       awareness.setLocalState(null);
     }
-  }, [currentUserId]);
+  }, [currentUserId, randomColorForUser]);
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -612,6 +478,12 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       clearSaveTimer();
       clearInitialSyncTimer();
       destroyBinding();
+      cursorDisposablesRef.current.forEach((disposable) => {
+        disposable.dispose();
+      });
+      cursorDisposablesRef.current = [];
+      clearRemoteCursors();
+      remoteCursorManagerRef.current = null;
       const awareness = awarenessRef.current as DestroyableAwareness | null;
       awareness?.destroy?.();
       awarenessRef.current = null;
@@ -621,7 +493,7 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       docRef.current = null;
       textRef.current = null;
     },
-    [clearInitialSyncTimer, clearSaveTimer, destroyBinding],
+    [clearInitialSyncTimer, clearRemoteCursors, clearSaveTimer, destroyBinding],
   );
 
   const handleEditorMount = useCallback(
@@ -631,9 +503,43 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
         minimap: { enabled: false },
         readOnly: sessionEnded,
       });
+      clearRemoteCursors();
+      remoteCursorManagerRef.current = new RemoteCursorManager({
+        editor,
+        tooltips: true,
+        tooltipDuration: 2,
+        showTooltipOnHover: true,
+      });
+      cursorDisposablesRef.current.forEach((disposable) => {
+        disposable.dispose();
+      });
+      cursorDisposablesRef.current = [
+        editor.onDidChangeCursorSelection(() => {
+          publishLocalCursorState();
+        }),
+        editor.onDidChangeCursorPosition(() => {
+          publishLocalCursorState();
+        }),
+        editor.onDidFocusEditorWidget(() => {
+          publishLocalCursorState();
+        }),
+        editor.onDidBlurEditorWidget(() => {
+          clearLocalCursorState();
+          syncRemoteCursors();
+        }),
+      ];
+      publishLocalCursorState();
+      syncRemoteCursors();
       rebindEditor();
     },
-    [rebindEditor, sessionEnded],
+    [
+      clearLocalCursorState,
+      clearRemoteCursors,
+      publishLocalCursorState,
+      rebindEditor,
+      sessionEnded,
+      syncRemoteCursors,
+    ],
   );
 
   return (
