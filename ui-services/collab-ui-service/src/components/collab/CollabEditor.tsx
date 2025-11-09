@@ -72,7 +72,6 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
   const awarenessRef = useRef<Awareness | null>(null);
   const latestCodeRef = useRef<string>(DEFAULT_BOOTSTRAP_CODE);
   const saveTimerRef = useRef<number | null>(null);
-  const initialSyncTimerRef = useRef<number | null>(null);
   const hasReceivedInitialRef = useRef(false);
   const pendingInitialContentRef = useRef<string | null>(null);
   const activeSessionRef = useRef<string | null>(sessionId);
@@ -84,13 +83,6 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
     if (saveTimerRef.current !== null) {
       window.clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
-    }
-  }, []);
-
-  const clearInitialSyncTimer = useCallback(() => {
-    if (initialSyncTimerRef.current !== null) {
-      window.clearTimeout(initialSyncTimerRef.current);
-      initialSyncTimerRef.current = null;
     }
   }, []);
 
@@ -418,16 +410,8 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
     doc.on("update", handleUpdate);
     rebindEditor();
 
-    clearInitialSyncTimer();
-    initialSyncTimerRef.current = window.setTimeout(() => {
-      if (!hasReceivedInitialRef.current) {
-        ensureInitialContent("bootstrap-timeout");
-      }
-    }, 1500);
-
     return () => {
       doc.off("update", handleUpdate);
-      clearInitialSyncTimer();
       destroyBinding();
       const awarenessInstance =
         awarenessRef.current as DestroyableAwareness | null;
@@ -440,7 +424,6 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       clearRemoteCursors();
     };
   }, [
-    clearInitialSyncTimer,
     currentUserId,
     clearLocalCursorState,
     destroyBinding,
@@ -540,7 +523,6 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
   useEffect(
     () => () => {
       clearSaveTimer();
-      clearInitialSyncTimer();
       destroyBinding();
       cursorDisposablesRef.current.forEach((disposable) => {
         disposable.dispose();
@@ -557,7 +539,7 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       docRef.current = null;
       textRef.current = null;
     },
-    [clearInitialSyncTimer, clearRemoteCursors, clearSaveTimer, destroyBinding],
+    [clearRemoteCursors, clearSaveTimer, destroyBinding],
   );
 
   const handleEditorMount = useCallback(
