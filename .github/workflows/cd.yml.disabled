@@ -28,8 +28,8 @@ jobs:
       - name: Deploy to EB
         uses: einaregilsson/beanstalk-deploy@v22
         with:
-          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
           application_name: PeerPrep-09
           environment_name: PeerPrep-09-env
           region: ap-southeast-1
