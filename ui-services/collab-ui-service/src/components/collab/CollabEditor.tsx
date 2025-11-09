@@ -12,7 +12,7 @@ import {
   publishLocalCursorState as publishLocalCursorStateHelper,
   syncRemoteCursors as syncRemoteCursorsHelper,
 } from "./cursorHelpers";
-import { decodeUpdate, storageKeyFor } from "./yjsHelpers";
+import { cursorStorageKeyFor, decodeUpdate, storageKeyFor } from "./yjsHelpers";
 import { createCollabSocket } from "./socketHelpers";
 import { createSocketEventHandlers } from "./socketEventHandlers";
 import { createDocUpdateHandler } from "./docHandlers";
@@ -98,25 +98,6 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
     activeSessionRef.current = sessionId;
   }, [sessionId]);
 
-  useEffect(() => {
-    if (currentUserId !== "user123") {
-      return;
-    }
-
-    try {
-      const url = new URL(window.location.href);
-      const currentIo = url.searchParams.get("io");
-
-      if (currentIo !== "2" || url.pathname !== "/collab") {
-        url.searchParams.set("io", "2");
-        url.pathname = "/collab";
-        window.location.replace(url.toString());
-      }
-    } catch (error) {
-      console.warn("[CollabEditor] Failed to redirect special user", error);
-    }
-  }, [currentUserId]);
-
   const queueLocalSave = useCallback(
     (value: string) => {
       const key = storageKeyFor(activeSessionRef.current, currentUserId);
@@ -138,6 +119,84 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
     },
     [clearSaveTimer, currentUserId],
   );
+
+  const persistCursorPosition = useCallback(() => {
+    const key = cursorStorageKeyFor(activeSessionRef.current, currentUserId);
+    if (!key) {
+      return;
+    }
+    const editor = editorRef.current;
+    const model = editor?.getModel();
+    const position = editor?.getPosition();
+    if (!editor || !model || !position) {
+      return;
+    }
+    const offset = model.getOffsetAt(position);
+    try {
+      localStorage.setItem(
+        key,
+        JSON.stringify({
+          offset,
+        }),
+      );
+    } catch (error) {
+      console.warn("[CollabEditor] Failed to persist cursor position", {
+        key,
+        error,
+      });
+    }
+  }, [currentUserId]);
+
+  const restoreCursorPosition = useCallback(() => {
+    const key = cursorStorageKeyFor(activeSessionRef.current, currentUserId);
+    if (!key) {
+      return false;
+    }
+    let rawValue: string | null = null;
+    try {
+      rawValue = localStorage.getItem(key);
+    } catch (error) {
+      console.warn("[CollabEditor] Failed to read cursor position", {
+        key,
+        error,
+      });
+      return false;
+    }
+    if (!rawValue) {
+      return false;
+    }
+    let stored: unknown;
+    try {
+      stored = JSON.parse(rawValue);
+    } catch (error) {
+      console.warn("[CollabEditor] Invalid cursor position payload", {
+        key,
+        error,
+      });
+      return false;
+    }
+    const offset =
+      typeof stored === "object" && stored !== null
+        ? Number((stored as { offset?: number }).offset)
+        : Number(stored);
+    if (!Number.isFinite(offset)) {
+      return false;
+    }
+    const editor = editorRef.current;
+    const model = editor?.getModel();
+    if (!editor || !model) {
+      return false;
+    }
+    const maxOffset = Math.max(0, model.getValueLength());
+    const clamped =
+      offset <= 0 ? 0 : offset >= maxOffset ? maxOffset : Math.floor(offset);
+    const position = model.getPositionAt(clamped);
+    editor.setPosition(position);
+    editor.revealPositionInCenterIfOutsideViewport(position, 0);
+    publishLocalCursorStateHelper(awarenessRef.current, editor);
+    persistCursorPosition();
+    return true;
+  }, [currentUserId, persistCursorPosition]);
 
   const getCurrentCode = useCallback(() => {
     const text = textRef.current;
@@ -206,6 +265,11 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
   const publishLocalCursorState = useCallback(() => {
     publishLocalCursorStateHelper(awarenessRef.current, editorRef.current);
   }, []);
+
+  const handleLocalCursorActivity = useCallback(() => {
+    publishLocalCursorState();
+    persistCursorPosition();
+  }, [persistCursorPosition, publishLocalCursorState]);
 
   const rebindEditor = useCallback(() => {
     rebindEditorHelper({
@@ -515,28 +579,32 @@ const CollabEditor: React.FC<CollabEditorProps> = ({
       });
       cursorDisposablesRef.current = [
         editor.onDidChangeCursorSelection(() => {
-          publishLocalCursorState();
+          handleLocalCursorActivity();
         }),
         editor.onDidChangeCursorPosition(() => {
-          publishLocalCursorState();
+          handleLocalCursorActivity();
         }),
         editor.onDidFocusEditorWidget(() => {
-          publishLocalCursorState();
+          handleLocalCursorActivity();
         }),
         editor.onDidBlurEditorWidget(() => {
           clearLocalCursorState();
           syncRemoteCursors();
         }),
       ];
-      publishLocalCursorState();
-      syncRemoteCursors();
       rebindEditor();
+      const restored = restoreCursorPosition();
+      if (!restored) {
+        handleLocalCursorActivity();
+      }
+      syncRemoteCursors();
     },
     [
       clearLocalCursorState,
       clearRemoteCursors,
-      publishLocalCursorState,
+      handleLocalCursorActivity,
       rebindEditor,
+      restoreCursorPosition,
       sessionEnded,
       syncRemoteCursors,
     ],
