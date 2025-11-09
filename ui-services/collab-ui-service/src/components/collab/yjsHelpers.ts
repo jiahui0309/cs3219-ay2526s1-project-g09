@@ -38,3 +38,13 @@ export const storageKeyFor = (
   }
   return `collab-code:${sessionId}:${userId}`;
 };
+
+export const cursorStorageKeyFor = (
+  sessionId: string | null,
+  userId?: string | null,
+) => {
+  if (!sessionId || !userId) {
+    return null;
+  }
+  return `collab-cursor:${sessionId}:${userId}`;
+};

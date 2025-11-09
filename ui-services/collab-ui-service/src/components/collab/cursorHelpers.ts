@@ -38,15 +38,59 @@ export const syncRemoteCursors = (
   }
 
   const localClientId = awareness.clientID;
+  const states = awareness.getStates();
+
+  const latestByUserId = new Map<
+    string,
+    { clientId: number; updatedAt: number }
+  >();
+
+  states.forEach((state, clientId) => {
+    if (clientId === localClientId) {
+      return;
+    }
+
+    const userId =
+      typeof state?.user?.id === "string" ? state.user.id.trim() : null;
+    if (!userId) {
+      return;
+    }
+
+    const cursorState = state?.cursor;
+    const updatedAt =
+      typeof cursorState?.updatedAt === "number" ? cursorState.updatedAt : 0;
+    const prev = latestByUserId.get(userId);
+    if (
+      !prev ||
+      updatedAt > prev.updatedAt ||
+      (updatedAt === prev.updatedAt && clientId > prev.clientId)
+    ) {
+      latestByUserId.set(userId, { clientId, updatedAt });
+    }
+  });
+
+  const allowedClientIds = new Set<number>();
+  latestByUserId.forEach(({ clientId }) => allowedClientIds.add(clientId));
+
   const activeClientIds = new Set<number>();
 
-  awareness.getStates().forEach((state, clientId) => {
+  states.forEach((state, clientId) => {
     if (clientId === localClientId) {
       return;
     }
 
     const cursorState = state?.cursor;
     const userState = state?.user;
+
+    const userId =
+      typeof userState?.id === "string" ? userState.id.trim() : null;
+    if (
+      userId &&
+      allowedClientIds.size > 0 &&
+      !allowedClientIds.has(clientId)
+    ) {
+      return;
+    }
 
     const hasOffset = typeof cursorState?.offset === "number";
     const hasPosition =
@@ -146,6 +190,8 @@ export const publishLocalCursorState = (
   awareness.setLocalStateField("cursor", {
     offset,
     position,
+    updatedAt: Date.now(),
+    clientId: awareness.clientID,
   });
 
   const selection = editor.getSelection();

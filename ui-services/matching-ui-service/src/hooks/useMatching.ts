@@ -69,7 +69,11 @@ export function useMatching({ username }: UseMatchingProps) {
       const response = await connectMatch(username, data.matchId);
 
       if (response.status.toUpperCase() === "SUCCESS") {
-        navigate("/collab");
+        if (username === "user123") {
+          navigate("/collab?io=2");
+        } else {
+          navigate("/collab");
+        }
       } else if (response.status.toUpperCase() === "REJECTED") {
         setShowRejectedDialog(true);
       } else if (response.status.toUpperCase() === "EXPIRED") {
