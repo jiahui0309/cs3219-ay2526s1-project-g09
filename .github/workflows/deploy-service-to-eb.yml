@@ -1,5 +1,4 @@
 name: Deploy Service to EB
-
 on:
   workflow_call:
     inputs:
@@ -19,16 +18,10 @@ on:
         required: false
         type: string
         default: ap-southeast-1
-    secrets:
-      AWS_ACCESS_KEY_ID:
-        required: true
-      AWS_SECRET_ACCESS_KEY:
-        required: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
