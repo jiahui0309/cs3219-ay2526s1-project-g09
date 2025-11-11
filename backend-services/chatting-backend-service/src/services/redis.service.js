@@ -1,12 +1,47 @@
 import { createClient } from "redis";
 
+/**
+ * Resolve Redis connection options from environment variables
+ * Supports both URL-based and host/port-based configuration with TLS
+ */
+const resolveRedisConnectionOptions = () => {
+  const redisUrl = process.env.REDIS_URL ?? null;
+
+  if (!redisUrl) {
+    // Default to localhost for development
+    return {
+      socket: {
+        host: "localhost",
+        port: 6379,
+      },
+    };
+  }
+
+  const useTls = process.env.REDIS_TLS_ENABLED === "true";
+
+  const options = {
+    url: redisUrl,
+    socket: useTls
+      ? {
+          tls: true,
+          rejectUnauthorized: false,
+          servername: new URL(redisUrl).hostname,
+          connectTimeout: 20000,
+          alpnProtocols: [],
+        }
+      : undefined,
+  };
+
+  return options;
+};
+
 class RedisService {
   static instance = null;
 
   constructor() {
-    const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
+    const options = resolveRedisConnectionOptions();
 
-    this.pubClient = createClient({ url: redisUrl });
+    this.pubClient = createClient(options);
     this.subClient = this.pubClient.duplicate();
     this.appClient = this.pubClient.duplicate();
 
